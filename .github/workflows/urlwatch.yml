@@ -19,8 +19,12 @@ jobs:
       - name: Ejecutar urlwatch y guardar resultado
         run: urlwatch --urls ~/.config/urlwatch/urls2watch.yaml  --report json > cambios.json
 
-      - name: Subir resultado como artefacto
+       name: Generar HTML personalizado
+        run: |
+          python3 urltowatch_generate_html_report.py
+
+      - name: Subir reporte HTML como artefacto
         uses: actions/upload-artifact@v4
         with:
-          name: resultado-urlwatch
-          path: resultado.txt
+          name: reporte-urlwatch
+          path: resultado.html
