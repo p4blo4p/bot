@@ -3,6 +3,7 @@
 
 # A basic URL job just needs a URL
 name: "Oposiciones UCA"
+kind: url
 url: "https://personal.uca.es/oposiciones-turno-libre/"
 # You can use a pre-supplied filter for this, here we apply two:
 # the html2text filter that converts the HTML to plaintext and
@@ -14,12 +15,15 @@ filter:
 ---
 # Built-in job kind "shell" needs a command specified
 name: "Home Listing"
+kind: shell
 command: "ls -al ~"
 #---
 name: "Cursos INAP"
+kind: url
 url: "https://buscadorcursos.inap.es/#/?abierto=true&funcion=6"
 #---
 name: "Ayto Pto Real"
+kind: url
 url: "https://puertoreal.sedelectronica.es/board"
 filter:
   - html2text
