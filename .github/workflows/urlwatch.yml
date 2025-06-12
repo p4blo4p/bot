@@ -16,8 +16,8 @@ jobs:
         run: mkdir -p ~/.config/urlwatch
       - name: Copiar urls2watch.yaml
         run: cp urls2watch.yaml ~/.config/urlwatch/urls2watch.yaml
-      - name: Ejecutar urlwatch
-        run: urlwatch > resultado.txt
+      - name: Ejecutar urlwatch y guardar resultado
+        run: urlwatch --urls ~/.config/urlwatch/urls2watch.yaml > resultado.txt
 
       - name: Subir resultado como artefacto
         uses: actions/upload-artifact@v4
