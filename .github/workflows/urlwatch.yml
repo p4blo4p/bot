@@ -19,7 +19,7 @@ jobs:
       - name: Ejecutar urlwatch y guardar resultado
         run: urlwatch --urls ~/.config/urlwatch/urls2watch.yaml  --report json > cambios.json
 
-       name: Generar HTML personalizado
+      - name: Generar HTML personalizado
         run: |
           python3 urltowatch_generate_html_report.py
 
