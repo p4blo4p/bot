@@ -12,6 +12,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Instalar urlwatch
         run: pip install urlwatch
+      - name: Crear carpeta de configuración de urlwatch
+        run: mkdir -p ~/.config/urlwatch
       - name: Copiar urls2watch.yaml
         run: cp urls2watch.yaml ~/.config/urlwatch/urls2watch.yaml
       - name: Ejecutar urlwatch
