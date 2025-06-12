@@ -1,0 +1,31 @@
+# pip install urlwatch
+# This is an example urls.yaml file for urlwatch
+
+# A basic URL job just needs a URL
+name: "Oposiciones UCA"
+url: "https://personal.uca.es/oposiciones-turno-libre/"
+# You can use a pre-supplied filter for this, here we apply two:
+# the html2text filter that converts the HTML to plaintext and
+# the grep filter that filters lines based on a regular expression
+filter:
+  - html2text
+  - grep: "informática"
+  - strip
+---
+# Built-in job kind "shell" needs a command specified
+name: "Home Listing"
+command: "ls -al ~"
+#---
+name: "Cursos INAP"
+url: "https://buscadorcursos.inap.es/#/?abierto=true&funcion=6"
+#---
+name: "Ayto Pto Real"
+url: "https://puertoreal.sedelectronica.es/board"
+filter:
+  - html2text
+  - grep: "informática"
+  - strip
+
+#---
+name: "Ayto Pto Real"
+url: "https://puertoreal.es/oferta-publica-de-empleo/"
