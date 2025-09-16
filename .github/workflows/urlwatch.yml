@@ -19,12 +19,13 @@ jobs:
       - name: Ejecutar urlwatch y guardar resultado
         run: urlwatch --urls ~/.config/urlwatch/urls2watch.yaml 
 
-      - name: Generar HTML personalizado
+      - name: Ejecutar urlwatch y guardar resultado
         run: |
-          python3 urltowatch_generate_html_report.py
-
-      - name: Subir reporte HTML como artefacto
+          FECHA=$(date +"%Y%m%d_%H%M")
+          urlwatch --urls ~/.config/urlwatch/urls2watch.yaml > "resultado_${FECHA}.txt"
+      
+      - name: Subir artefacto resultado_urlwatch con timestamp
         uses: actions/upload-artifact@v4
         with:
-          name: reporte-urlwatch
-          path: resultado.html
+          name: resultado_urlwatch_${{ steps.fecha.outputs.timestamp }}
+          path: resultado_*.txt
