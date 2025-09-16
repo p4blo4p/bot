@@ -1,0 +1,1 @@
+No existe la base de datos de urlwatch. ¿Se ejecutó urlwatch al menos una vez?
