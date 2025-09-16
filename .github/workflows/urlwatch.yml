@@ -1,31 +1,43 @@
-name: Ejecutar urlwatch
+name: urlwatch logs
 
 on:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '0 * * * *'   # Corre cada hora (ajusta si lo deseas)
   workflow_dispatch:
 
 jobs:
-  run-urlwatch:
+  urlwatch-logs:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
       - name: Instalar urlwatch
         run: pip install urlwatch
-      - name: Crear carpeta de configuración de urlwatch
-        run: mkdir -p ~/.config/urlwatch
-      - name: Copiar urls2watch.yaml
-        run: cp urls2watch.yaml ~/.config/urlwatch/urls2watch.yaml
-      - name: Ejecutar urlwatch y guardar resultado
-        run: urlwatch --urls ~/.config/urlwatch/urls2watch.yaml 
 
-      - name: Ejecutar urlwatch y guardar resultado
+      - name: Crear carpeta logs si no existe
+        run: mkdir -p logs
+
+      - name: Ejecutar urlwatch y guardar resultado con timestamp
         run: |
           FECHA=$(date +"%Y%m%d_%H%M")
-          urlwatch --urls ~/.config/urlwatch/urls2watch.yaml > "resultado_${FECHA}.txt"
-      
-      - name: Subir artefacto resultado_urlwatch con timestamp
-        uses: actions/upload-artifact@v4
-        with:
-          name: resultado_urlwatch_${{ steps.fecha.outputs.timestamp }}
-          path: resultado_*.txt
+          urlwatch --urls urls2watch.yaml > "logs/resultado_${FECHA}.txt"
+
+      - name: Extraer y ordenar URLs por última fecha de cambio
+        run: python logs/ultimos_cambios.py
+
+      - name: Subir logs a main
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add logs/
+          git commit -m "Subida automática de logs de urlwatch [skip ci]" || echo "Nada para commitear"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
