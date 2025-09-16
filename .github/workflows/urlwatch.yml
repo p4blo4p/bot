@@ -17,7 +17,7 @@ jobs:
       - name: Copiar urls2watch.yaml
         run: cp urls2watch.yaml ~/.config/urlwatch/urls2watch.yaml
       - name: Ejecutar urlwatch y guardar resultado
-        run: urlwatch --urls ~/.config/urlwatch/urls2watch.yaml  --report json > cambios.json
+        run: urlwatch --urls ~/.config/urlwatch/urls2watch.yaml > cambios.json
 
       - name: Generar HTML personalizado
         run: |
