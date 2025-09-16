@@ -3,6 +3,12 @@ from datetime import datetime
 import os
 
 DB_PATH = os.path.expanduser('~/.local/share/urlwatch/urls.db')
+
+if not os.path.exists(DB_PATH):
+    with open("logs/ultimos_cambios.txt", "w") as f:
+        f.write("No existe la base de datos de urlwatch. ¿Se ejecutó urlwatch al menos una vez?\n")
+    exit(0)
+
 conn = sqlite3.connect(DB_PATH)
 cur = conn.cursor()
 
