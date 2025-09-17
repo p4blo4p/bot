@@ -13,6 +13,14 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Cache urlwatch database
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/urlwatch
+          key: urlwatch-cache-${{ github.run_id }}
+          restore-keys: |
+            urlwatch-cache-
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
