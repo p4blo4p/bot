@@ -1,8 +1,8 @@
 name: urlwatch logs
 
 on:
-  schedule:
-    - cron: '0 * * * *'   # Corre cada hora (ajusta si lo deseas)
+  #schedule:
+  #  - cron: '0 * * * *'   # Corre cada hora (ajusta si lo deseas)
   workflow_dispatch:
 
 jobs:
