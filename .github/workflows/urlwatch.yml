@@ -84,6 +84,12 @@ jobs:
           echo "--- URLWatch Output ---"
           cat "logs/urlwatch_${TIMESTAMP}.txt"
           echo "--- End URLWatch Output ---"
+
+    - name: 🔍 Debug database structure
+        if: always()  # Run even if urlwatch had issues
+        run: |
+          python debug_database.py
+       
       
       - name: 📊 Generate analysis reports
         if: always()  # Run even if urlwatch had issues
