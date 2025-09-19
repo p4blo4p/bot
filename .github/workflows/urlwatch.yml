@@ -17,9 +17,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/urlwatch
-          key: urlwatch-cache-${{ github.run_id }}
+          key: ${{ runner.os }}-urlwatch-cache-v1
           restore-keys: |
-            urlwatch-cache-
+            ${{ runner.os }}-urlwatch-cache-
 
       - name: Setup Python
         uses: actions/setup-python@v5
