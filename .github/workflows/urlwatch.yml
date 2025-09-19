@@ -1,51 +1,195 @@
-name: urlwatch logs
+name: 🔍 URLWatch Job Monitoring
 
 on:
-  #schedule:
-  #  - cron: '0 * * * *'   # Corre cada hora (ajusta si lo deseas)
+  # Schedule runs (uncomment and adjust as needed)
+  # schedule:
+  #   - cron: '0 */4 * * *'  # Every 4 hours
+  #   - cron: '0 9 * * 1-5'  # Weekdays at 9 AM (work hours)
+  
+  # Manual trigger
   workflow_dispatch:
+    inputs:
+      force_check:
+        description: 'Force check all URLs regardless of cache'
+        required: false
+        default: false
+        type: boolean
+      verbose_output:
+        description: 'Enable verbose output'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
-  urlwatch-logs:
+  urlwatch-monitor:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
+    
     steps:
-      - name: Checkout repo
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
-
-      - name: Cache urlwatch database
+        with:
+          fetch-depth: 1
+      
+      - name: 💾 Cache urlwatch database
         uses: actions/cache@v4
         with:
           path: ~/.cache/urlwatch
-          key: ${{ runner.os }}-urlwatch-cache-v1
+          key: ${{ runner.os }}-urlwatch-${{ hashFiles('urls2watch.yaml') }}-v2
           restore-keys: |
-            ${{ runner.os }}-urlwatch-cache-
-
-      - name: Setup Python
+            ${{ runner.os }}-urlwatch-
+      
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
-
-      - name: Instalar urlwatch
-        run: pip install urlwatch
-
-      - name: Crear carpeta logs si no existe
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: 📦 Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install urlwatch
+          pip install requests beautifulsoup4 lxml
+      
+      - name: 📁 Create logs directory
         run: mkdir -p logs
-
-      - name: Ejecutar urlwatch y guardar resultado con timestamp
+      
+      - name: 🔍 Run urlwatch monitoring
+        id: urlwatch
         run: |
-          FECHA=$(date +"%Y%m%d_%H%M")
-          urlwatch --urls urls2watch.yaml > "logs/resultado_${FECHA}.txt"
-
-      - name: Extraer y ordenar URLs por última fecha de cambio
-        run: python ultimos_cambios.py
-
-      - name: Subir logs a main
+          TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+          
+          # Set urlwatch options based on inputs
+          URLWATCH_OPTS=""
+          if [[ "${{ inputs.force_check }}" == "true" ]]; then
+            URLWATCH_OPTS="$URLWATCH_OPTS --no-cache"
+          fi
+          if [[ "${{ inputs.verbose_output }}" == "true" ]]; then
+            URLWATCH_OPTS="$URLWATCH_OPTS --verbose"
+          fi
+          
+          echo "Running: urlwatch $URLWATCH_OPTS --urls urls2watch.yaml"
+          
+          # Run urlwatch and capture output
+          if urlwatch $URLWATCH_OPTS --urls urls2watch.yaml > "logs/urlwatch_${TIMESTAMP}.txt" 2>&1; then
+            echo "urlwatch_success=true" >> $GITHUB_OUTPUT
+            echo "✅ urlwatch completed successfully"
+          else
+            echo "urlwatch_success=false" >> $GITHUB_OUTPUT
+            echo "⚠️  urlwatch completed with warnings/errors (check logs)"
+          fi
+          
+          # Always show the output for debugging
+          echo "--- URLWatch Output ---"
+          cat "logs/urlwatch_${TIMESTAMP}.txt"
+          echo "--- End URLWatch Output ---"
+      
+      - name: 📊 Generate analysis reports
+        if: always()  # Run even if urlwatch had issues
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
+          echo "Generating detailed analysis..."
+          python ultimos_cambios.py
+          
+          # Create summary file
+          echo "# URLWatch Monitoring Summary" > logs/summary.md
+          echo "Generated: $(date)" >> logs/summary.md
+          echo "" >> logs/summary.md
+          
+          if [[ "${{ steps.urlwatch.outputs.urlwatch_success }}" == "true" ]]; then
+            echo "✅ **Status**: Monitoring completed successfully" >> logs/summary.md
+          else
+            echo "⚠️ **Status**: Monitoring completed with issues" >> logs/summary.md
+          fi
+          
+          echo "" >> logs/summary.md
+          echo "## Recent Activity" >> logs/summary.md
+          
+          # Add JSON summary if available
+          if [[ -f "logs/ultimos_cambios.json" ]]; then
+            python3 -c "
+          import json, sys
+          with open('logs/ultimos_cambios.json') as f:
+              data = json.load(f)
+          if data.get('status') == 'success':
+              print(f'- **Total URLs monitored**: {data[\"summary\"][\"total_urls\"]}')
+              print(f'- **Recent changes (7 days)**: {data[\"summary\"][\"recent_changes_7d\"]}')
+              if data['urls']:
+                  latest = data['urls'][0]
+                  print(f'- **Most recent change**: {latest[\"last_change\"][\"formatted\"]} ({latest[\"last_change\"][\"days_ago\"]} days ago)')
+          else:
+              print('- No data available yet (first run)')
+          " >> logs/summary.md
+          fi
+      
+      - name: 🏷️ Check for changes
+        id: check_changes
+        run: |
+          if [[ -n "$(git status --porcelain logs/)" ]]; then
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+            echo "📝 Changes detected in logs"
+          else
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+            echo "📝 No new changes to commit"
+          fi
+      
+      - name: 📤 Commit and push changes
+        if: steps.check_changes.outputs.changes_detected == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "URLWatch Monitor Bot"
+          
           git add logs/
-          git commit -m "Subida automática de logs de urlwatch [skip ci]" || echo "Nada para commitear"
-          git push origin main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+          # Create informative commit message
+          CHANGES_COUNT=$(git diff --cached --stat | wc -l)
+          COMMIT_MSG="🔍 URLWatch monitoring update"
+          
+          if [[ "${{ steps.urlwatch.outputs.urlwatch_success }}" == "true" ]]; then
+            COMMIT_MSG="$COMMIT_MSG ✅"
+          else
+            COMMIT_MSG="$COMMIT_MSG ⚠️"
+          fi
+          
+          COMMIT_MSG="$COMMIT_MSG - ${{ steps.urlwatch.outputs.timestamp }}"
+          
+          git commit -m "$COMMIT_MSG" -m "Automated monitoring run with $CHANGES_COUNT file changes"
+          git push
+          
+          echo "✅ Changes committed and pushed"
+      
+      - name: 📋 Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urlwatch-reports-${{ steps.urlwatch.outputs.timestamp }}
+          path: |
+            logs/
+          retention-days: 30
+      
+      - name: 📄 Output summary
+        if: always()
+        run: |
+          echo "## 📊 Workflow Summary"
+          echo "- **Timestamp**: ${{ steps.urlwatch.outputs.timestamp }}"
+          echo "- **URLWatch Success**: ${{ steps.urlwatch.outputs.urlwatch_success }}"
+          echo "- **Changes Detected**: ${{ steps.check_changes.outputs.changes_detected }}"
+          echo "- **Forced Check**: ${{ inputs.force_check }}"
+          echo "- **Verbose Output**: ${{ inputs.verbose_output }}"
+          
+          if [[ -f "logs/summary.md" ]]; then
+            echo ""
+            echo "## 📈 Monitoring Summary"
+            cat logs/summary.md
+          fi
+
+  # Optional: Notification job (uncomment if you want notifications)
+  # notify:
+  #   needs: urlwatch-monitor
+  #   runs-on: ubuntu-latest
+  #   if: failure() || (success() && needs.urlwatch-monitor.outputs.changes_detected == 'true')
+  #   steps:
+  #     - name: Send notification
+  #       # Add your preferred notification method here
+  #       # Examples: Slack webhook, email, Discord, etc.
+  #       run: echo "Add notification logic here"
