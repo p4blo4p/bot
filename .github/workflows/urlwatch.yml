@@ -38,7 +38,7 @@ jobs:
           urlwatch --urls urls2watch.yaml > "logs/resultado_${FECHA}.txt"
 
       - name: Extraer y ordenar URLs por última fecha de cambio
-        run: python logs/ultimos_cambios.py
+        run: python ultimos_cambios.py
 
       - name: Subir logs a main
         run: |
