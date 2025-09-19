@@ -51,48 +51,83 @@ def get_database_info():
         
         # Get table structure
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = cursor.fetchall()
+        tables = [table[0] for table in cursor.fetchall()]
         print(f"Available tables: {tables}")
         
-        # Check if snapshots table exists
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='snapshots';")
-        if not cursor.fetchone():
-            # Try alternative table names
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-            all_tables = [table[0] for table in cursor.fetchall()]
-            print(f"Snapshots table not found. Available tables: {all_tables}")
+        # Check table structure and adapt to available schema
+        if 'CacheEntry' in tables:
+            # Modern urlwatch uses CacheEntry table
+            print("Using CacheEntry table structure")
+            
+            # Get columns in CacheEntry table
+            cursor.execute("PRAGMA table_info(CacheEntry);")
+            columns = [col[1] for col in cursor.fetchall()]
+            print(f"CacheEntry columns: {columns}")
+            
+            # Adapt query based on available columns
+            if 'key' in columns and 'timestamp' in columns:
+                # Standard CacheEntry structure
+                query = """
+                    SELECT key as url, MAX(timestamp) as last_change, COUNT(*) as total_entries
+                    FROM CacheEntry
+                    WHERE key IS NOT NULL
+                    GROUP BY key
+                    ORDER BY MAX(timestamp) DESC;
+                """
+            elif 'key' in columns:
+                # No timestamp, use rowid as proxy
+                query = """
+                    SELECT key as url, MAX(rowid) as last_entry, COUNT(*) as total_entries
+                    FROM CacheEntry
+                    WHERE key IS NOT NULL
+                    GROUP BY key
+                    ORDER BY MAX(rowid) DESC;
+                """
+            else:
+                print("Unknown CacheEntry structure")
+                return None
+                
+        elif 'snapshots' in tables:
+            # Legacy urlwatch structure
+            print("Using snapshots table structure")
+            query = """
+                SELECT url, MAX(timestamp) as last_change, COUNT(*) as total_snapshots
+                FROM snapshots
+                GROUP BY url
+                ORDER BY MAX(timestamp) DESC;
+            """
+        else:
+            print(f"No recognized table structure found in tables: {tables}")
             return None
         
-        # Get last changes with more details
-        query = """
-            SELECT url, MAX(timestamp) as last_change, COUNT(*) as total_snapshots
-            FROM snapshots
-            GROUP BY url
-            ORDER BY MAX(timestamp) DESC;
-        """
         cursor.execute(query)
         results = cursor.fetchall()
         
-        # Get recent activity (last 7 days)
-        seven_days_ago = (datetime.now() - timedelta(days=7)).timestamp()
-        recent_query = """
-            SELECT url, timestamp, COUNT(*) as changes_count
-            FROM snapshots
-            WHERE timestamp > ?
-            GROUP BY url, DATE(timestamp, 'unixepoch')
-            ORDER BY timestamp DESC;
-        """
-        cursor.execute(recent_query, (seven_days_ago,))
-        recent_activity = cursor.fetchall()
+        # Get recent activity if timestamp column exists
+        recent_activity = []
+        if 'CacheEntry' in tables and 'timestamp' in columns:
+            seven_days_ago = (datetime.now() - timedelta(days=7)).timestamp()
+            recent_query = """
+                SELECT key as url, timestamp, COUNT(*) as changes_count
+                FROM CacheEntry
+                WHERE timestamp > ? AND key IS NOT NULL
+                GROUP BY key, DATE(timestamp, 'unixepoch')
+                ORDER BY timestamp DESC;
+            """
+            cursor.execute(recent_query, (seven_days_ago,))
+            recent_activity = cursor.fetchall()
         
         return {
             'last_changes': results,
             'recent_activity': recent_activity,
-            'total_urls': len(results)
+            'total_urls': len(results),
+            'table_type': 'CacheEntry' if 'CacheEntry' in tables else 'snapshots'
         }
         
     except sqlite3.Error as e:
         print(f"ERROR: Database error: {e}")
+        import traceback
+        traceback.print_exc()
         return None
     finally:
         if conn:
@@ -101,10 +136,15 @@ def get_database_info():
 def format_timestamp(unix_timestamp):
     """Convert Unix timestamp to readable format."""
     try:
-        dt = datetime.fromtimestamp(unix_timestamp)
-        return dt.strftime('%Y-%m-%d %H:%M:%S')
+        # Handle both timestamp and rowid cases
+        if unix_timestamp > 1000000000:  # Looks like a Unix timestamp
+            dt = datetime.fromtimestamp(unix_timestamp)
+            return dt.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            # Probably a rowid, return as entry number
+            return f"Entry #{unix_timestamp}"
     except (ValueError, TypeError):
-        return "Invalid timestamp"
+        return f"Unknown ({unix_timestamp})"
 
 def generate_text_report(data):
     """Generate detailed text report."""
@@ -119,19 +159,31 @@ def generate_text_report(data):
     
     # Summary
     report_lines.append(f"📊 SUMMARY:")
+    report_lines.append(f"   • Database type: {data.get('table_type', 'unknown')}")
     report_lines.append(f"   • Total URLs monitored: {data['total_urls']}")
     report_lines.append(f"   • Recent activity (7 days): {len(data['recent_activity'])} changes")
     report_lines.append("")
     
     # Last changes for each URL
-    report_lines.append("📅 LAST CHANGE PER URL (most recent first):")
-    report_lines.append("-" * 80)
-    
-    for url, timestamp, snapshots_count in data['last_changes']:
-        formatted_date = format_timestamp(timestamp)
-        days_ago = (datetime.now() - datetime.fromtimestamp(timestamp)).days
-        report_lines.append(f"{formatted_date} ({days_ago} days ago) - {snapshots_count} snapshots")
-        report_lines.append(f"   {url}")
+    if data['last_changes']:
+        report_lines.append("📅 MONITORED URLS (most recent activity first):")
+        report_lines.append("-" * 80)
+        
+        for url, timestamp, count in data['last_changes']:
+            formatted_date = format_timestamp(timestamp)
+            
+            # Calculate days ago only for actual timestamps
+            if timestamp and timestamp > 1000000000:
+                days_ago = (datetime.now() - datetime.fromtimestamp(timestamp)).days
+                time_info = f" ({days_ago} days ago)"
+            else:
+                time_info = ""
+            
+            report_lines.append(f"{formatted_date}{time_info} - {count} entries")
+            report_lines.append(f"   {url}")
+            report_lines.append("")
+    else:
+        report_lines.append("📅 No URLs found in database")
         report_lines.append("")
     
     # Recent activity
@@ -171,13 +223,17 @@ def generate_json_report(data):
     for url, timestamp, snapshots_count in data['last_changes']:
         url_data = {
             "url": url,
-            "last_change": {
-                "timestamp": timestamp,
-                "formatted": format_timestamp(timestamp),
-                "days_ago": (datetime.now() - datetime.fromtimestamp(timestamp)).days
+            "last_activity": {
+                "value": timestamp,
+                "formatted": format_timestamp(timestamp)
             },
-            "total_snapshots": snapshots_count
+            "total_entries": snapshots_count
         }
+        
+        # Add days_ago only for actual timestamps
+        if timestamp and timestamp > 1000000000:
+            url_data["last_activity"]["days_ago"] = (datetime.now() - datetime.fromtimestamp(timestamp)).days
+        
         json_data["urls"].append(url_data)
     
     # Add recent activity
