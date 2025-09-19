@@ -1,81 +1,121 @@
 # pip install urlwatch
-# This is an example urls.yaml file for urlwatch
+# Improved configuration for urlwatch
 
-# A basic URL job just needs a URL
-name: "Oposiciones UCA"
+# Job 1: Oposiciones UCA - Computer Science positions
+---
+name: "Oposiciones UCA - Informática"
 kind: url
 url: "https://personal.uca.es/oposiciones-turno-libre/"
-# You can use a pre-supplied filter for this, here we apply two:
-# the html2text filter that converts the HTML to plaintext and
-# the grep filter that filters lines based on a regular expression
 filter:
   - html2text
   - grep: "informática"
   - strip
+# Add timeout and error handling
+timeout: 30
+ignore_connection_errors: false
+
+# Job 2: Home directory listing (for testing)
 ---
-# Built-in job kind "shell" needs a command specified
 name: "Home Listing"
 kind: shell
 command: "ls -al ~"
-#---
-name: "Cursos INAP"
+enabled: false  # Disable by default to avoid noise
+
+# Job 3: INAP Courses - Information Technology
+---
+name: "Cursos INAP - Informática"
 kind: url
 url: "https://buscadorcursos.inap.es/#/?abierto=true&funcion=6"
-#---
-name: "Ayto Pto Real"
+timeout: 30
+# Note: This might be a JavaScript-heavy site, consider using browser job type
+filter:
+  - html2text
+  - grep: "(?i)informática|sistemas|tecnolog"  # Case insensitive, broader search
+  - strip
+
+# Job 4: Puerto Real City Council - Board
+---
+name: "Ayto Puerto Real - Tablón"
 kind: url
 url: "https://puertoreal.sedelectronica.es/board"
 filter:
   - html2text
-  - grep: "informática"
+  - grep: "(?i)informática|técnico|sistemas"  # Broader search terms
   - strip
+timeout: 30
 
-#---
-name: "Ayto Pto Real"
+# Job 5: Puerto Real City Council - Job Offers
+---
+name: "Ayto Puerto Real - OPE"
+kind: url
 url: "https://puertoreal.es/oferta-publica-de-empleo/"
-
+filter:
+  - html2text
+  - grep: "(?i)informática|técnico|sistemas"
+  - strip
+timeout: 30
 display:
   new: true
   error: true
-  unchanged: true
-  empty-diff: true
+  unchanged: false  # Don't show unchanged to reduce noise
+  empty-diff: false
 
-# -- REPORT: How to be notified --
-# Configure how you receive alerts when changes are detected.
+# Additional job suggestions for comprehensive monitoring
+---
+name: "Junta de Andalucía - OPE"
+kind: url
+url: "https://www.juntadeandalucia.es/organismos/funcionpublica/areas/oposiciones.html"
+filter:
+  - html2text
+  - grep: "(?i)informática|sistemas|tecnolog"
+  - strip
+timeout: 30
+
+---
+name: "BOE - Oposiciones Estado"
+kind: url
+url: "https://www.boe.es/buscar/ult_dias.php?id=BOE-A&t=4"
+filter:
+  - html2text
+  - grep: "(?i)informática|sistemas|tecnolog|técnico superior"
+  - strip
+timeout: 30
+
+# -- GLOBAL SETTINGS --
+# How often to check (in seconds)
+job_defaults:
+  timeout: 30
+  ignore_connection_errors: false
+  ignore_http_error_codes: [404, 500, 502, 503]
+
+# -- REPORT: Notification configuration --
 report:
-  # Reporter 1: Print a summary to the terminal.
-  # Useful for when you run urlwatch manually.
   stdout:
     enabled: true
-    details: true # Set to 'true' to see the diff in the terminal.
+    details: true
     color: true
-
+  
+  # File output for GitHub Actions
   text:
     enabled: true
     details: true
     footer: true
-    line_length: 75
+    line_length: 100
+    filename: "logs/urlwatch_report.txt"
+  
+  # HTML report for better readability
   html:
     enabled: true
     diff: unified
     separate: true
+    filename: "logs/urlwatch_report.html"
 
-  # Reporter 2: Send an email with the changes.
-
-
-# -- CACHE: How to store history --
-# Configure the database for storing page snapshots.
+# -- CACHE: Storage configuration --
 cache:
-  # Use the SQLite backend for better performance and reliability.
-  class: urlwatch.storage.ShelveCache
-  # The file where the database will be stored.
-  path: "cache.db"
+  class: urlwatch.storage.ShelveStorage
+  path: "~/.cache/urlwatch/cache.db"
 
-# -- HOOKS: Advanced actions --
-# Run custom commands or scripts on events.
+# -- HOOKS: Post-processing actions --
 hooks:
-  # This hook will run a shell command after a report is successfully sent.
-  # In this example, it just prints the date to a log file.
   on_report:
-    run: "echo '[{report_time}] Report sent for {jobs_changed} jobs.' >> /var/log/urlwatch.log"
-
+    run: "echo '[{report_time}] Report generated for {jobs_changed} changed jobs out of {jobs_total} total.' >> logs/urlwatch.log"
