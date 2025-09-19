@@ -33,3 +33,49 @@ filter:
 #---
 name: "Ayto Pto Real"
 url: "https://puertoreal.es/oferta-publica-de-empleo/"
+
+display:
+  new: true
+  error: true
+  unchanged: true
+  empty-diff: true
+
+# -- REPORT: How to be notified --
+# Configure how you receive alerts when changes are detected.
+report:
+  # Reporter 1: Print a summary to the terminal.
+  # Useful for when you run urlwatch manually.
+  stdout:
+    enabled: true
+    details: true # Set to 'true' to see the diff in the terminal.
+    color: true
+
+  text:
+    enabled: true
+    details: true
+    footer: true
+    line_length: 75
+  html:
+    enabled: true
+    diff: unified
+    separate: true
+
+  # Reporter 2: Send an email with the changes.
+
+
+# -- CACHE: How to store history --
+# Configure the database for storing page snapshots.
+cache:
+  # Use the SQLite backend for better performance and reliability.
+  class: urlwatch.storage.ShelveCache
+  # The file where the database will be stored.
+  path: "cache.db"
+
+# -- HOOKS: Advanced actions --
+# Run custom commands or scripts on events.
+hooks:
+  # This hook will run a shell command after a report is successfully sent.
+  # In this example, it just prints the date to a log file.
+  on_report:
+    run: "echo '[{report_time}] Report sent for {jobs_changed} jobs.' >> /var/log/urlwatch.log"
+
