@@ -47,35 +47,36 @@ def format_timestamp(timestamp):
     return "Sin datos"
 
 def get_job_info():
-    """Obtiene información básica de los trabajos desde el config"""
-    jobs_info = {
-        "cced95a59b1f3044d3f200a36c0312b3cf6a2ddf": {
-            "name": "Oposiciones UCA - Informática",
-            "url": "https://personal.uca.es/oposiciones-turno-libre/"
-        },
-        "ad2247145f4f85341613aacc6b70e02dcde0e89b": {
-            "name": "Cursos INAP - Informática", 
-            "url": "https://buscadorcursos.inap.es/#/?abierto=true&funcion=6"
-        },
-        "7e9a3d72638d85a09b09260a765d924d61007ffb": {
-            "name": "Ayto Puerto Real - Tablón",
-            "url": "https://puertoreal.sedelectronica.es/board"
-        },
-        "e7c4f5a11af0244bbee598b93b2c74c2e3356845": {
-            "name": "Ayto Puerto Real - OPE",
-            "url": "https://puertoreal.es/oferta-publica-de-empleo/"
-        },
-        "fa1ffa577b126907b0607c07979d579d95d74fcd": {
-            "name": "BOE - Oposiciones Estado",
-            "url": "https://www.boe.es/buscar/ult_dias.php?id=BOE-A&t=4"
-        },
-        "dab7d089c6aaa937b7ea6555e4171cfa30a208ec": {
-            "name": "Junta de Andalucía - OPE", 
-            "url": "https://www.juntadeandalucia.es/organismos/funcionpublica/areas/oposiciones.html"
-        }
-    }
+    """Obtiene información de los jobs desde urls2watch.yaml"""
+    import yaml
+    import hashlib
+    
+    jobs_info = {}
+    
+    try:
+        # Leer el archivo YAML de configuración
+        with open('urls2watch.yaml', 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+        
+        # Extraer los jobs y generar GUIDs consistentes
+        if 'jobs' in config:
+            for job in config['jobs']:
+                if 'url' in job:
+                    # Generar GUID de la misma manera que urlwatch
+                    url = job['url']
+                    guid = hashlib.sha1(url.encode()).hexdigest()
+                    
+                    jobs_info[guid] = {
+                        'name': job.get('name', url),
+                        'url': url
+                    }
+                    
+    except FileNotFoundError:
+        print("⚠️ Advertencia: No se encontró urls2watch.yaml")
+    except Exception as e:
+        print(f"❌ Error leyendo urls2watch.yaml: {e}")
+    
     return jobs_info
-
 def generate_detailed_report():
     """Genera un reporte detallado con fechas de cambio"""
     
