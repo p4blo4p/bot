@@ -1,0 +1,54 @@
+{
+  "generated_at": "2025-09-22T11:57:50.384408",
+  "generated_readable": "22/09/2025 11:57:50",
+  "sites": {
+    "e7c4f5a11af0244bbee598b93b2c74c2e3356845": {
+      "name": "Sitio desconocido",
+      "url": "guid:e7c4f5a11af0244bbee598b93b2c74c2e3356845",
+      "last_check": "22/09/2025 11:57:47",
+      "status": "\u2705 OK",
+      "data_size": 0,
+      "total_checks": 1
+    },
+    "ad2247145f4f85341613aacc6b70e02dcde0e89b": {
+      "name": "Sitio desconocido",
+      "url": "guid:ad2247145f4f85341613aacc6b70e02dcde0e89b",
+      "last_check": "22/09/2025 11:57:47",
+      "status": "\u2705 OK",
+      "data_size": 68,
+      "total_checks": 1
+    },
+    "8b6250dc36208ebde52a601e4996439030bc0a01": {
+      "name": "Sitio desconocido",
+      "url": "guid:8b6250dc36208ebde52a601e4996439030bc0a01",
+      "last_check": "22/09/2025 11:57:47",
+      "status": "\u2705 OK",
+      "data_size": 0,
+      "total_checks": 1
+    },
+    "cced95a59b1f3044d3f200a36c0312b3cf6a2ddf": {
+      "name": "Sitio desconocido",
+      "url": "guid:cced95a59b1f3044d3f200a36c0312b3cf6a2ddf",
+      "last_check": "22/09/2025 11:57:47",
+      "status": "\u2705 OK",
+      "data_size": 0,
+      "total_checks": 1
+    },
+    "7e9a3d72638d85a09b09260a765d924d61007ffb": {
+      "name": "Sitio desconocido",
+      "url": "guid:7e9a3d72638d85a09b09260a765d924d61007ffb",
+      "last_check": "22/09/2025 11:57:49",
+      "status": "\u2705 OK",
+      "data_size": 1271,
+      "total_checks": 1
+    },
+    "12ae3e4b8c627603a29725d79823e18e4870d789": {
+      "name": "Sitio desconocido",
+      "url": "guid:12ae3e4b8c627603a29725d79823e18e4870d789",
+      "last_check": "22/09/2025 11:57:50",
+      "status": "\u274c ERROR",
+      "data_size": 0,
+      "total_checks": 1
+    }
+  }
+}

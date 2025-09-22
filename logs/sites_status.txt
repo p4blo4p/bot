@@ -1,17 +1,3 @@
-# URLWatch Monitoring Summary
-
-**Generated:** 22/09/2025 11:57:50
-**Status:** ✅ Monitoring completed successfully
-
-## Recent Activity
-
-### Latest Execution Log
-`urlwatch_20250922_115746.txt`
-
-### Monitored Sites
-
-### Detailed Status
-```
 ================================================================================
 🔍 ESTADO DETALLADO DE MONITOREO URLWatch
 📅 Generado: 22/09/2025 11:57:50
@@ -65,4 +51,3 @@
 🔢 Total verificaciones: 1
 ------------------------------------------------------------
 
-```
