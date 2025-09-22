@@ -9,6 +9,42 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+def generate_guid(url):
+    """Genera GUID consistente para una URL"""
+    import hashlib
+    return hashlib.sha1(url.encode()).hexdigest()
+
+# Modificar la función record_change para usar GUIDs
+def record_change(self, job_name, url, change_type, content_length=0):
+    """Registra un cambio usando GUIDs consistentes"""
+    timestamp = datetime.now().isoformat()
+    guid = generate_guid(url)
+    
+    if guid not in self.history:
+        self.history[guid] = {
+            'name': job_name,
+            'url': url,
+            'first_seen': timestamp,
+            'changes': []
+        }
+    
+    change_record = {
+        'timestamp': timestamp,
+        'type': change_type,
+        'content_length': content_length,
+        'readable_date': datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    }
+    
+    self.history[guid]['changes'].append(change_record)
+    self.history[guid]['last_change'] = timestamp
+    self.history[guid]['last_change_readable'] = change_record['readable_date']
+    
+    # Mantener solo los últimos 50 cambios
+    if len(self.history[guid]['changes']) > 50:
+        self.history[guid]['changes'] = self.history[guid]['changes'][-50:]
+    
+    self.save_history()
+
 class ChangeTracker:
     """Clase para rastrear cambios detallados"""
     
