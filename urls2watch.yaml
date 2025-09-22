@@ -1,121 +1,128 @@
-# pip install urlwatch
-# Improved configuration for urlwatch
+# URLWatch Configuration - Seguimiento detallado de cambios
+# ~/.config/urlwatch/urlwatch.yaml
 
-# Job 1: Oposiciones UCA - Computer Science positions
----
-name: "Oposiciones UCA - Informática"
-kind: url
-url: "https://personal.uca.es/oposiciones-turno-libre/"
-filter:
-  - html2text
-  - grep: "informática"
-  - strip
-# Add timeout and error handling
-timeout: 30
-ignore_connection_errors: false
-
-# Job 2: Home directory listing (for testing)
----
-name: "Home Listing"
-kind: shell
-command: "ls -al ~"
-enabled: false  # Disable by default to avoid noise
-
-# Job 3: INAP Courses - Information Technology
----
-name: "Cursos INAP - Informática"
-kind: url
-url: "https://buscadorcursos.inap.es/#/?abierto=true&funcion=6"
-timeout: 30
-# Note: This might be a JavaScript-heavy site, consider using browser job type
-filter:
-  - html2text
-  - grep: "(?i)informática|sistemas|tecnolog"  # Case insensitive, broader search
-  - strip
-
-# Job 4: Puerto Real City Council - Board
----
-name: "Ayto Puerto Real - Tablón"
-kind: url
-url: "https://puertoreal.sedelectronica.es/board"
-filter:
-  - html2text
-  - grep: "(?i)informática|técnico|sistemas"  # Broader search terms
-  - strip
-timeout: 30
-
-# Job 5: Puerto Real City Council - Job Offers
----
-name: "Ayto Puerto Real - OPE"
-kind: url
-url: "https://puertoreal.es/oferta-publica-de-empleo/"
-filter:
-  - html2text
-  - grep: "(?i)informática|técnico|sistemas"
-  - strip
-timeout: 30
 display:
+  # Mostrar información más detallada
   new: true
   error: true
-  unchanged: false  # Don't show unchanged to reduce noise
-  empty-diff: false
+  unchanged: false
+  empty-diff: true
 
-# Additional job suggestions for comprehensive monitoring
----
-name: "Junta de Andalucía - OPE"
-kind: url
-url: "https://www.juntadeandalucia.es/organismos/funcionpublica/areas/oposiciones.html"
-filter:
-  - html2text
-  - grep: "(?i)informática|sistemas|tecnolog"
-  - strip
-timeout: 30
-
----
-name: "BOE - Oposiciones Estado"
-kind: url
-url: "https://www.boe.es/buscar/ult_dias.php?id=BOE-A&t=4"
-filter:
-  - html2text
-  - grep: "(?i)informática|sistemas|tecnolog|técnico superior"
-  - strip
-timeout: 30
-
-# -- GLOBAL SETTINGS --
-# How often to check (in seconds)
-job_defaults:
-  timeout: 30
-  ignore_connection_errors: false
-  ignore_http_error_codes: [404, 500, 502, 503]
-
-# -- REPORT: Notification configuration --
 report:
-  stdout:
-    enabled: true
-    details: true
-    color: true
-  
-  # File output for GitHub Actions
+  # Formato del reporte
   text:
-    enabled: true
+    line_length: 79
     details: true
     footer: true
-    line_length: 100
-    filename: "logs/urlwatch_report.txt"
+    minimal: false
   
-  # HTML report for better readability
+  # Incluir información adicional en los reportes
   html:
-    enabled: true
     diff: unified
-    separate: true
-    filename: "logs/urlwatch_report.html"
 
-# -- CACHE: Storage configuration --
-cache:
-  class: urlwatch.storage.ShelveStorage
-  path: "~/.cache/urlwatch/cache.db"
+# Configuración de almacenamiento y cache
+storage:
+  # Mantener más historia en la base de datos
+  minidb:
+    max_snapshots: 10  # Guardar hasta 10 snapshots por URL
 
-# -- HOOKS: Post-processing actions --
-hooks:
-  on_report:
-    run: "echo '[{report_time}] Report generated for {jobs_changed} changed jobs out of {jobs_total} total.' >> logs/urlwatch.log"
+# Configuración de trabajos (jobs)
+jobs:
+  - name: "Oposiciones UCA - Informática"
+    url: "https://personal.uca.es/oposiciones-turno-libre/"
+    timeout: 30
+    ignore_connection_errors: false
+    filter:
+      - html2text
+      - grep: "informática"
+      - strip
+    # Añadir etiquetas para mejor organización
+    tags:
+      - oposiciones
+      - universidad
+      - informatica
+
+  - name: "Cursos INAP - Informática"  
+    url: "https://buscadorcursos.inap.es/#/?abierto=true&funcion=6"
+    timeout: 30
+    filter:
+      - html2text
+      - grep: "(?i)informática|sistemas|tecnolog"
+      - strip
+    tags:
+      - cursos
+      - inap
+      - informatica
+
+  - name: "Ayto Puerto Real - Tablón"
+    url: "https://puertoreal.sedelectronica.es/board" 
+    timeout: 30
+    filter:
+      - html2text
+      - grep: "(?i)informática|técnico|sistemas"
+      - strip
+    tags:
+      - ayuntamiento
+      - puerto-real
+      - informatica
+
+  - name: "Ayto Puerto Real - OPE"
+    url: "https://puertoreal.es/oferta-publica-de-empleo/"
+    timeout: 30
+    filter:
+      - html2text  
+      - grep: "(?i)informática|técnico|sistemas"
+      - strip
+    tags:
+      - ayuntamiento
+      - puerto-real
+      - ope
+
+  # URLs corregidas (las originales daban 404)
+  - name: "BOE - Oposiciones Estado"
+    url: "https://www.boe.es/buscar/doc.php?coleccion=boe&modo=ultimosdias&tm=4"
+    timeout: 30
+    filter:
+      - html2text
+      - grep: "(?i)informática|sistemas|tecnolog|técnico superior"
+      - strip
+    tags:
+      - boe
+      - estado
+      - oposiciones
+
+  - name: "Junta de Andalucía - OPE"
+    url: "https://www.juntadeandalucia.es/organismos/funcionpublica/"
+    timeout: 30
+    filter:
+      - html2text
+      - grep: "(?i)informática|sistemas|tecnolog|oposición"
+      - strip  
+    tags:
+      - junta-andalucia
+      - ope
+      - informatica
+
+# Configuración de reportes
+reporters:
+  - stdout:
+      color: true
+      
+  # Guardar reportes detallados en archivos
+  - text:
+      filename: "logs/detailed_report_{timestamp}.txt"
+      details: true
+      
+  # Opcional: envío por email (descomenta y configura si lo necesitas)
+  # - email:
+  #     enabled: true
+  #     from: "tu-email@gmail.com"
+  #     to: "destino@gmail.com"
+  #     subject: "URLWatch: Cambios detectados"
+  #     smtp:
+  #       host: "smtp.gmail.com"
+  #       port: 587
+  #       starttls: true
+  #       auth: true
+  #       user: "tu-email@gmail.com"
+  #       password: "tu-password"
