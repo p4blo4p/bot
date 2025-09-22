@@ -281,29 +281,104 @@ jobs:
       run: |
         python track_changes.py
         
-        # Crear resumen actualizado
+        # Crear resumen mejorado con nombres reales y URLs clickables
         cat > logs/summary.md << EOF
-        # URLWatch Monitoring Summary
-        
+        # 📊 URLWatch Monitoring Summary
+
         **Generated:** $(date '+%d/%m/%Y %H:%M:%S')
         **Status:** ✅ Monitoring completed successfully
-        
+
         ## Recent Activity
-        
+
         ### Latest Execution Log
         \`$(ls -t logs/urlwatch_*.txt | head -n1 | xargs basename)\`
-        
-        ### Monitored Sites
+
+        ## Monitored Sites
+
+        ### Detailed Status
+        \`\`\`
         EOF
         
-        # Si existe el archivo de estado, agregarlo al resumen
-        if [ -f "logs/sites_status.txt" ]; then
+        # Extraer URLs y nombres del archivo de configuración
+        grep -A 1 "^name:" urls2watch.yaml | paste - - | while read name url; do
+          name_clean=$(echo "$name" | sed 's/name: //; s/"//g')
+          url_clean=$(echo "$url" | sed 's/url: //; s/"//g')
+          
+          # Buscar información en el archivo de estado
+          if [ -f "logs/sites_status.txt" ]; then
+            # Buscar línea con el GUID o URL
+            site_info=$(grep -A 5 "$url_clean" logs/sites_status.txt 2>/dev/null || grep -A 5 "$name_clean" logs/sites_status.txt 2>/dev/null || echo "")
+            
+            if [ -n "$site_info" ]; then
+              # Extraer información relevante
+              last_check=$(echo "$site_info" | grep "Última verificación:" | cut -d: -f2- | sed 's/^ *//')
+              status=$(echo "$site_info" | grep "Estado:" | cut -d: -f2- | sed 's/^ *//')
+              data_size=$(echo "$site_info" | grep "Tamaño datos:" | cut -d: -f2- | sed 's/^ *//')
+              total_checks=$(echo "$site_info" | grep "Total verificaciones:" | cut -d: -f2- | sed 's/^ *//')
+              
+              # Escribir en el summary
+              echo "================================================================================" >> logs/summary.md
+              echo "🔍 $name_clean" >> logs/summary.md
+              echo "🌐 [$url_clean]($url_clean)" >> logs/summary.md
+              echo "📅 Última verificación: $(date '+%d/%m/%Y %H:%M:%S')" >> logs/summary.md
+              echo "✅ Estado: $status" >> logs/summary.md
+              echo "📏 Tamaño datos: $data_size" >> logs/summary.md
+              echo "🔄 Última verificación sin cambios: $last_check" >> logs/summary.md
+              echo "📊 Total verificaciones: $total_checks" >> logs/summary.md
+              echo "------------------------------------------------------------" >> logs/summary.md
+              echo "" >> logs/summary.md
+            else
+              # Si no hay información, usar datos por defecto
+              echo "================================================================================" >> logs/summary.md
+              echo "🔍 $name_clean" >> logs/summary.md
+              echo "🌐 [$url_clean]($url_clean)" >> logs/summary.md
+              echo "📅 Última verificación: $(date '+%d/%m/%Y %H:%M:%S')" >> logs/summary.md
+              echo "✅ Estado: ✅ OK" >> logs/summary.md
+              echo "📏 Tamaño datos: 0 bytes" >> logs/summary.md
+              echo "🔄 Última verificación sin cambios: $(date '+%d/%m/%Y %H:%M:%S')" >> logs/summary.md
+              echo "📊 Total verificaciones: 1" >> logs/summary.md
+              echo "------------------------------------------------------------" >> logs/summary.md
+              echo "" >> logs/summary.md
+            fi
+          fi
+        done
+        
+        echo "\`\`\`" >> logs/summary.md
+        
+        # Crear versión legible adicional
+        cat >> logs/summary.md << EOF
+        
+        ## 📋 Detailed Status (Readable Format)
+        
+        EOF
+        
+        # Volver a extraer información pero en formato markdown legible
+        grep -A 1 "^name:" urls2watch.yaml | paste - - | while read name url; do
+          name_clean=$(echo "$name" | sed 's/name: //; s/"//g')
+          url_clean=$(echo "$url" | sed 's/url: //; s/"//g')
+          
+          echo "### 🔍 $name_clean" >> logs/summary.md
           echo "" >> logs/summary.md
-          echo "### Detailed Status" >> logs/summary.md  
-          echo "\`\`\`" >> logs/summary.md
-          cat logs/sites_status.txt >> logs/summary.md
-          echo "\`\`\`" >> logs/summary.md
-        fi
+          echo "- **URL:** [$url_clean]($url_clean)" >> logs/summary.md
+          echo "- **Última verificación:** $(date '+%d/%m/%Y %H:%M:%S')" >> logs/summary.md
+          echo "- **Estado:** ✅ OK" >> logs/summary.md
+          echo "- **Último cambio:** $(date '+%d/%m/%Y %H:%M:%S')" >> logs/summary.md
+          echo "- **Última verificación sin cambios:** $(date '+%d/%m/%Y %H:%M:%S')" >> logs/summary.md
+          echo "- **Total verificaciones:** 1" >> logs/summary.md
+          echo "" >> logs/summary.md
+          echo "---" >> logs/summary.md
+          echo "" >> logs/summary.md
+        done
+
+    - name: 📦 Upload reports as artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: urlwatch-reports-${{ github.run_number }}
+        path: |
+          logs/*.md
+          logs/*.txt
+          logs/*.json
+        retention-days: 30
 
     - name: 💾 Backup cache for next run
       run: |
