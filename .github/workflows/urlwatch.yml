@@ -63,15 +63,10 @@ jobs:
               details: true
         EOF
 
-    - name: 📝 Load URLs configuration from repository
+    - name: 📝 Create URLs configuration 
       run: |
-        # Si existe urls2watch.yaml en el repo, usarlo
-        if [ -f "urls2watch.yaml" ]; then
-          echo "✅ Usando urls2watch.yaml existente"
-          cp urls2watch.yaml .urlwatch/urls.yaml
-        else
-          # Crear configuración por defecto
-          cat > .urlwatch/urls.yaml << 'EOF'
+        # Crear archivo de URLs con solo las definiciones de jobs
+        cat > .urlwatch/urls.yaml << 'EOF'
         name: "Oposiciones UCA - Informática"
         url: "https://personal.uca.es/oposiciones-turno-libre/"
         timeout: 30
@@ -104,7 +99,6 @@ jobs:
           - grep: "(?i)informática|técnico|sistemas"
           - strip
         ---
-        # URLs corregidas (las anteriores daban 404)
         name: "BOE - Búsqueda Oposiciones"
         url: "https://www.boe.es/buscar/doc.php?coleccion=boe&modo=ultimosdias&tm=4"
         timeout: 30
@@ -121,6 +115,40 @@ jobs:
           - grep: "(?i)informática|sistemas|tecnolog|oposición"
           - strip
         EOF
+
+    - name: 🔄 Override with custom URLs if exists
+      run: |
+        # Si existe un archivo urls2watch.yaml personalizado, extraer solo los jobs
+        if [ -f "urls2watch.yaml" ]; then
+          echo "🔄 Detectado urls2watch.yaml personalizado, extrayendo jobs..."
+          
+          # Crear script para extraer solo los jobs
+          cat > extract_jobs.py << 'EOF'
+          import yaml
+          
+          try:
+              with open('urls2watch.yaml', 'r') as f:
+                  data = yaml.safe_load(f)
+              
+              # Extraer solo los jobs si existen
+              jobs = data.get('jobs', [])
+              
+              if jobs:
+                  with open('.urlwatch/urls.yaml', 'w') as f:
+                      for i, job in enumerate(jobs):
+                          # Escribir cada job como documento YAML separado
+                          yaml.dump(job, f, default_flow_style=False, allow_unicode=True)
+                          if i < len(jobs) - 1:
+                              f.write('---\n')
+                  print(f"✅ Extraídos {len(jobs)} jobs al archivo .urlwatch/urls.yaml")
+              else:
+                  print("⚠️ No se encontraron jobs en urls2watch.yaml")
+                  
+          except Exception as e:
+              print(f"❌ Error extrayendo jobs: {e}")
+          EOF
+          
+          python extract_jobs.py
         fi
 
     - name: 🗂️ Load previous cache if exists
@@ -156,11 +184,11 @@ jobs:
             urls_config = {}
             try:
                 with open(".urlwatch/urls.yaml", 'r') as f:
-                    urls_data = yaml.safe_load(f)
-                    if isinstance(urls_data, list):
-                        for item in urls_data:
-                            if isinstance(item, dict) and 'name' in item and 'url' in item:
-                                urls_config[item['url']] = item['name']
+                    # Cargar múltiples documentos YAML
+                    urls_data = list(yaml.safe_load_all(f))
+                    for job in urls_data:
+                        if isinstance(job, dict) and 'name' in job and 'url' in job:
+                            urls_config[job['url']] = job['name']
             except Exception as e:
                 print(f"⚠️ Error cargando configuración de URLs: {e}")
             
