@@ -162,12 +162,11 @@ def job_list_finished(jobs):
 def report_finished(reports):
     """
     Hook llamado después de generar reportes
-    Actualiza estadísticas finales
+    Actualiza estadísticas finales y genera reporte mejorado
     """
     try:
         # Generar reporte de estado actual
         status_file = change_tracker.log_dir / "current_status.json"
-        
         current_status = {
             'last_execution': datetime.now().isoformat(),
             'last_execution_readable': datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
@@ -175,34 +174,96 @@ def report_finished(reports):
         }
         
         for url, data in change_tracker.history.items():
+            # Obtener información detallada de cambios
+            changes = data.get('changes', [])
+            last_change = data.get('last_change_readable', 'Sin cambios registrados')
+            
+            # Encontrar la última vez que no hubo cambios (estado 'unchanged')
+            last_unchanged = 'No disponible'
+            for change in reversed(changes):
+                if change.get('type') == 'unchanged':
+                    last_unchanged = change.get('readable_date', 'Fecha no disponible')
+                    break
+            
+            # Si no hay 'unchanged', buscar el último 'processed' exitoso
+            if last_unchanged == 'No disponible':
+                for change in reversed(changes):
+                    if change.get('type') in ['processed', 'new'] and change.get('content_length', 0) > 0:
+                        last_unchanged = change.get('readable_date', 'Fecha no disponible')
+                        break
+            
             current_status['monitored_sites'][url] = {
                 'name': data['name'],
                 'first_seen': data.get('first_seen'),
-                'last_change': data.get('last_change_readable', 'Sin cambios registrados'),
-                'total_changes': len(data.get('changes', [])),
-                'recent_activity': data.get('changes', [])[-3:]  # Últimas 3 actividades
+                'last_change': last_change,
+                'last_unchanged': last_unchanged,
+                'total_changes': len(changes),
+                'recent_activity': changes[-3:] if changes else []
             }
         
+        # Guardar estado actual en JSON
         with open(status_file, 'w', encoding='utf-8') as f:
             json.dump(current_status, f, indent=2, ensure_ascii=False)
-            
-        # Generar resumen legible
-        readable_status = change_tracker.log_dir / "readable_status.txt"
+        
+        # Generar resumen legible en formato Markdown
+        readable_status = change_tracker.log_dir / "status_summary.md"
         with open(readable_status, 'w', encoding='utf-8') as f:
-            f.write("=" * 60 + "\n")
-            f.write("📊 ESTADO ACTUAL DE MONITOREO URLWatch\n") 
-            f.write(f"🕐 Última ejecución: {current_status['last_execution_readable']}\n")
-            f.write("=" * 60 + "\n\n")
+            # Encabezado del reporte
+            f.write("# 📊 URLWatch Monitoring Summary\n\n")
+            f.write(f"**Generated:** {current_status['last_execution_readable']}\n")
+            f.write("**Status:** ✅ Monitoring completed successfully\n\n")
+            
+            # Sección de actividad reciente
+            f.write("## Recent Activity\n\n")
+            f.write("### Latest Execution Log\n")
+            f.write(f"`urlwatch_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt`\n\n")
+            
+            # Sección de sitios monitoreados
+            f.write("## Monitored Sites\n\n")
+            f.write("### Detailed Status\n")
+            f.write("```\n")
+            
+            # Generar entrada para cada sitio
+            for url, site_data in current_status['monitored_sites'].items():
+                f.write(f"================================================================================\n")
+                f.write(f"🔍 {site_data['name']}\n")
+                f.write(f"🌐 [{url}]({url})\n")
+                f.write(f"📅 Última verificación: {current_status['last_execution_readable']}\n")
+                f.write(f"✅ Estado: ✅ OK\n")
+                f.write(f"📏 Último cambio: {site_data['last_change']}\n")
+                f.write(f"🔄 Última verificación sin cambios: {site_data['last_unchanged']}\n")
+                f.write(f"📊 Total cambios registrados: {site_data['total_changes']}\n")
+                f.write("------------------------------------------------------------\n\n")
+            
+            f.write("```\n")
+            
+            # Generar versión más legible sin formato de código
+            f.write("\n## 📋 Detailed Status (Readable Format)\n\n")
             
             for url, site_data in current_status['monitored_sites'].items():
-                f.write(f"🔍 {site_data['name']}\n")
-                f.write(f"🌐 {url}\n")
-                f.write(f"📅 Último cambio: {site_data['last_change']}\n")
-                f.write(f"📊 Total cambios registrados: {site_data['total_changes']}\n")
-                f.write("-" * 40 + "\n\n")
+                f.write(f"### 🔍 {site_data['name']}\n\n")
+                f.write(f"- **URL:** [{url}]({url})\n")
+                f.write(f"- **Última verificación:** {current_status['last_execution_readable']}\n")
+                f.write(f"- **Estado:** ✅ OK\n")
+                f.write(f"- **Último cambio:** {site_data['last_change']}\n")
+                f.write(f"- **Última verificación sin cambios:** {site_data['last_unchanged']}\n")
+                f.write(f"- **Total cambios registrados:** {site_data['total_changes']}\n\n")
                 
+                # Mostrar actividad reciente si existe
+                if site_data['recent_activity']:
+                    f.write("**Actividad reciente:**\n")
+                    for activity in site_data['recent_activity']:
+                        activity_type = activity.get('type', 'unknown')
+                        icon = {'new': '🆕', 'changed': '🔄', 'error': '❌', 'processed': '⚙️', 'unchanged': '✅'}.get(activity_type, '❓')
+                        f.write(f"  - {icon} {activity.get('readable_date', 'Fecha no disponible')} ({activity_type})\n")
+                    f.write("\n")
+                
+                f.write("---\n\n")
+        
+        print(f"✅ Reporte generado: {readable_status}")
+        
     except Exception as e:
-        print(f"Error en report_finished hook: {e}")
+        print(f"❌ Error en report_finished hook: {e}")
 
 # Funciones de utilidad para debugging
 def debug_job_info(job):
