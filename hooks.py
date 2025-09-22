@@ -3,54 +3,14 @@
 URLWatch Hooks - Captura información adicional sobre cambios
 Archivo: ~/.config/urlwatch/hooks.py
 """
-import hashlib
 import json
 import os
+import hashlib
 from datetime import datetime
 from pathlib import Path
 
-def generate_guid(url):
-    """Genera GUID consistente para una URL"""
-    import hashlib
-    return hashlib.sha1(url.encode()).hexdigest()
-
-def record_change(self, job_name, url, change_type, content_length=0):
-    """Registra un cambio usando GUIDs consistentes"""
-    import hashlib
-    
-    timestamp = datetime.now().isoformat()
-    
-    # Generar GUID consistente
-    guid = hashlib.sha1(url.encode()).hexdigest()
-    
-    if guid not in self.history:
-        self.history[guid] = {
-            'name': job_name,
-            'url': url,
-            'first_seen': timestamp,
-            'changes': []
-        }
-    
-    change_record = {
-        'timestamp': timestamp,
-        'type': change_type,
-        'content_length': content_length,
-        'readable_date': datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    }
-    
-    self.history[guid]['changes'].append(change_record)
-    self.history[guid]['last_change'] = timestamp
-    self.history[guid]['last_change_readable'] = change_record['readable_date']
-    
-    # Mantener solo los últimos 50 cambios
-    if len(self.history[guid]['changes']) > 50:
-        self.history[guid]['changes'] = self.history[guid]['changes'][-50:]
-    
-    self.save_history()
-
 class ChangeTracker:
     """Clase para rastrear cambios detallados"""
-    
     def __init__(self):
         self.log_dir = Path("logs")
         self.log_dir.mkdir(exist_ok=True)
@@ -77,12 +37,16 @@ class ChangeTracker:
             print(f"Error guardando historial: {e}")
     
     def record_change(self, job_name, url, change_type, content_length=0):
-        """Registra un cambio"""
+        """Registra un cambio usando GUIDs consistentes"""
         timestamp = datetime.now().isoformat()
         
-        if url not in self.history:
-            self.history[url] = {
+        # Generar GUID consistente
+        guid = hashlib.sha1(url.encode()).hexdigest()
+        
+        if guid not in self.history:
+            self.history[guid] = {
                 'name': job_name,
+                'url': url,
                 'first_seen': timestamp,
                 'changes': []
             }
@@ -94,13 +58,13 @@ class ChangeTracker:
             'readable_date': datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         }
         
-        self.history[url]['changes'].append(change_record)
-        self.history[url]['last_change'] = timestamp
-        self.history[url]['last_change_readable'] = change_record['readable_date']
+        self.history[guid]['changes'].append(change_record)
+        self.history[guid]['last_change'] = timestamp
+        self.history[guid]['last_change_readable'] = change_record['readable_date']
         
-        # Mantener solo los últimos 50 cambios por URL
-        if len(self.history[url]['changes']) > 50:
-            self.history[url]['changes'] = self.history[url]['changes'][-50:]
+        # Mantener solo los últimos 50 cambios
+        if len(self.history[guid]['changes']) > 50:
+            self.history[guid]['changes'] = self.history[guid]['changes'][-50:]
         
         self.save_history()
 
@@ -119,14 +83,13 @@ def filter_result(url, job, result):
         
         # Este hook se llama siempre, registramos como 'processed'
         change_tracker.record_change(
-            job_name, 
-            url, 
-            'processed', 
+            job_name,
+            url,
+            'processed',
             content_length
         )
         
         return result
-        
     except Exception as e:
         print(f"Error en filter_result hook: {e}")
         return result
@@ -176,7 +139,7 @@ def report_finished(reports):
             'monitored_sites': {}
         }
         
-        for url, data in change_tracker.history.items():
+        for guid, data in change_tracker.history.items():
             # Obtener información detallada de cambios
             changes = data.get('changes', [])
             last_change = data.get('last_change_readable', 'Sin cambios registrados')
@@ -195,8 +158,10 @@ def report_finished(reports):
                         last_unchanged = change.get('readable_date', 'Fecha no disponible')
                         break
             
-            current_status['monitored_sites'][url] = {
+            url = data.get('url', guid)
+            current_status['monitored_sites'][guid] = {
                 'name': data['name'],
+                'url': url,
                 'first_seen': data.get('first_seen'),
                 'last_change': last_change,
                 'last_unchanged': last_unchanged,
@@ -227,10 +192,10 @@ def report_finished(reports):
             f.write("```\n")
             
             # Generar entrada para cada sitio
-            for url, site_data in current_status['monitored_sites'].items():
+            for guid, site_data in current_status['monitored_sites'].items():
                 f.write(f"================================================================================\n")
                 f.write(f"🔍 {site_data['name']}\n")
-                f.write(f"🌐 [{url}]({url})\n")
+                f.write(f"🌐 [{site_data['url']}]({site_data['url']})\n")
                 f.write(f"📅 Última verificación: {current_status['last_execution_readable']}\n")
                 f.write(f"✅ Estado: ✅ OK\n")
                 f.write(f"📏 Último cambio: {site_data['last_change']}\n")
@@ -243,9 +208,9 @@ def report_finished(reports):
             # Generar versión más legible sin formato de código
             f.write("\n## 📋 Detailed Status (Readable Format)\n\n")
             
-            for url, site_data in current_status['monitored_sites'].items():
+            for guid, site_data in current_status['monitored_sites'].items():
                 f.write(f"### 🔍 {site_data['name']}\n\n")
-                f.write(f"- **URL:** [{url}]({url})\n")
+                f.write(f"- **URL:** [{site_data['url']}]({site_data['url']})\n")
                 f.write(f"- **Última verificación:** {current_status['last_execution_readable']}\n")
                 f.write(f"- **Estado:** ✅ OK\n")
                 f.write(f"- **Último cambio:** {site_data['last_change']}\n")
@@ -287,7 +252,7 @@ def job_failed(job, exception):
         
         change_tracker.record_change(
             job_name,
-            job_url, 
+            job_url,
             f'error: {str(exception)[:100]}',
             0
         )
@@ -295,7 +260,7 @@ def job_failed(job, exception):
         # Log del error
         error_log = change_tracker.log_dir / "errors.log"
         with open(error_log, 'a', encoding='utf-8') as f:
-            f.write(f"{datetime.now().isoformat()} - {job_name} ({job_url}): {exception}\n")
+            f.write(f"{datetime.now().isoformat()} - {job_name} ({job_url}): {str(exception)}\n")
             
     except Exception as e:
         print(f"Error en job_failed hook: {e}")
