@@ -3,7 +3,7 @@
 URLWatch Hooks - Captura información adicional sobre cambios
 Archivo: ~/.config/urlwatch/hooks.py
 """
-
+import hashlib
 import json
 import os
 from datetime import datetime
@@ -14,11 +14,14 @@ def generate_guid(url):
     import hashlib
     return hashlib.sha1(url.encode()).hexdigest()
 
-# Modificar la función record_change para usar GUIDs
 def record_change(self, job_name, url, change_type, content_length=0):
     """Registra un cambio usando GUIDs consistentes"""
+    import hashlib
+    
     timestamp = datetime.now().isoformat()
-    guid = generate_guid(url)
+    
+    # Generar GUID consistente
+    guid = hashlib.sha1(url.encode()).hexdigest()
     
     if guid not in self.history:
         self.history[guid] = {
