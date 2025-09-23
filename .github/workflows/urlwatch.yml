@@ -25,10 +25,9 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: 📦 Install URLWatch and dependencies
+    - name: 📦 Install dependencies
       run: |
-        pip install urlwatch
-        pip install beautifulsoup4 lxml requests PyYAML
+        pip install urlwatch PyYAML
 
     - name: 📁 Create directories
       run: |
@@ -52,7 +51,6 @@ jobs:
             footer: true
             minimal: false
         
-        # Configuración para mejor seguimiento
         storage:
           minidb:
             filename: .urlwatch/cache.db
@@ -63,7 +61,7 @@ jobs:
               details: true
         EOF
 
-    - name: 📝 Create URLs configuration 
+    - name: 📝 Create default URLs configuration 
       run: |
         # Crear archivo de URLs con solo las definiciones de jobs
         cat > .urlwatch/urls.yaml << 'EOF'
@@ -116,38 +114,11 @@ jobs:
           - strip
         EOF
 
-    - name: 🔄 Override with custom URLs if exists
+    - name: 🔄 Extract jobs from custom URLs file
       run: |
         # Si existe un archivo urls2watch.yaml personalizado, extraer solo los jobs
         if [ -f "urls2watch.yaml" ]; then
           echo "🔄 Detectado urls2watch.yaml personalizado, extrayendo jobs..."
-          
-          # Crear script para extraer solo los jobs
-          cat > extract_jobs.py << 'EOF'
-          import yaml
-          
-          try:
-              with open('urls2watch.yaml', 'r') as f:
-                  data = yaml.safe_load(f)
-              
-              # Extraer solo los jobs si existen
-              jobs = data.get('jobs', [])
-              
-              if jobs:
-                  with open('.urlwatch/urls.yaml', 'w') as f:
-                      for i, job in enumerate(jobs):
-                          # Escribir cada job como documento YAML separado
-                          yaml.dump(job, f, default_flow_style=False, allow_unicode=True)
-                          if i < len(jobs) - 1:
-                              f.write('---\n')
-                  print(f"✅ Extraídos {len(jobs)} jobs al archivo .urlwatch/urls.yaml")
-              else:
-                  print("⚠️ No se encontraron jobs en urls2watch.yaml")
-                  
-          except Exception as e:
-              print(f"❌ Error extrayendo jobs: {e}")
-          EOF
-          
           python extract_jobs.py
         fi
 
@@ -161,154 +132,10 @@ jobs:
           echo "ℹ️ No hay cache anterior, iniciando desde cero"
         fi
 
-    - name: 📊 Create improved tracking script
-      run: |
-        cat > track_changes.py << 'EOF'
-        #!/usr/bin/env python3
-        import sqlite3
-        import json
-        import os
-        import yaml
-        from datetime import datetime
-        from pathlib import Path
-
-        def analyze_cache_changes():
-            """Analiza la cache y genera reporte de cambios"""
-            
-            cache_file = Path(".urlwatch/cache.db")
-            if not cache_file.exists():
-                print("❌ No se encontró archivo de cache")
-                return
-            
-            # Cargar URLs desde el archivo de configuración
-            urls_config = {}
-            try:
-                with open(".urlwatch/urls.yaml", 'r') as f:
-                    # Cargar múltiples documentos YAML
-                    urls_data = list(yaml.safe_load_all(f))
-                    for job in urls_data:
-                        if isinstance(job, dict) and 'name' in job and 'url' in job:
-                            urls_config[job['url']] = job['name']
-            except Exception as e:
-                print(f"⚠️ Error cargando configuración de URLs: {e}")
-            
-            try:
-                conn = sqlite3.connect(str(cache_file))
-                cursor = conn.cursor()
-                
-                # Obtener todas las entradas ordenadas por timestamp
-                cursor.execute("""
-                    SELECT guid, timestamp, tries, etag, 
-                           CASE WHEN data IS NULL THEN 0 ELSE 1 END as has_data,
-                           length(data) as data_length
-                    FROM CacheEntry 
-                    ORDER BY timestamp DESC
-                """)
-                
-                results = cursor.fetchall()
-                current_time = datetime.now()
-                
-                # Procesar resultados
-                sites_info = {}
-                for row in results:
-                    guid, timestamp, tries, etag, has_data, data_length = row
-                    
-                    if guid not in sites_info:
-                        sites_info[guid] = {
-                            'latest_timestamp': timestamp,
-                            'latest_tries': tries,
-                            'has_data': has_data,
-                            'data_length': data_length or 0,
-                            'entries_count': 0
-                        }
-                    
-                    sites_info[guid]['entries_count'] += 1
-                
-                # Generar reporte detallado
-                report_data = {
-                    'generated_at': current_time.isoformat(),
-                    'generated_readable': current_time.strftime("%d/%m/%Y %H:%M:%S"),
-                    'sites': {}
-                }
-                
-                # Por cada GUID, intentar encontrar la URL correspondiente
-                cursor.execute("SELECT DISTINCT guid FROM CacheEntry")
-                guids = cursor.fetchall()
-                
-                for (guid,) in guids:
-                    site_info = sites_info.get(guid, {})
-                    
-                    # Buscar en el historial para obtener URL
-                    cursor.execute("SELECT url FROM CacheEntry WHERE guid = ? LIMIT 1", (guid,))
-                    url_result = cursor.fetchone()
-                    
-                    if url_result and url_result[0]:
-                        url = url_result[0]
-                        site_name = urls_config.get(url, url)
-                    else:
-                        site_name = "Sitio desconocido"
-                        url = f"guid:{guid}"
-                    
-                    formatted_date = "Sin datos"
-                    if site_info.get('latest_timestamp'):
-                        try:
-                            formatted_date = datetime.fromtimestamp(
-                                site_info['latest_timestamp']
-                            ).strftime("%d/%m/%Y %H:%M:%S")
-                        except:
-                            pass
-                    
-                    status = "✅ OK" if site_info.get('has_data') else "❌ ERROR" 
-                    if site_info.get('latest_tries', 0) > 1:
-                        status += f" ({site_info['latest_tries']} intentos)"
-                    
-                    report_data['sites'][guid] = {
-                        'name': site_name,
-                        'url': url,
-                        'last_check': formatted_date,
-                        'status': status,
-                        'data_size': site_info.get('data_length', 0),
-                        'total_checks': site_info.get('entries_count', 0)
-                    }
-                
-                # Guardar reporte
-                os.makedirs("logs", exist_ok=True)
-                with open("logs/change_history.json", 'w') as f:
-                    json.dump(report_data, f, indent=2)
-                
-                # Generar reporte legible
-                with open("logs/sites_status.txt", 'w') as f:
-                    f.write("=" * 80 + "\n")
-                    f.write("🔍 ESTADO DETALLADO DE MONITOREO URLWatch\n")
-                    f.write(f"📅 Generado: {report_data['generated_readable']}\n") 
-                    f.write("=" * 80 + "\n\n")
-                    
-                    for guid, site in report_data['sites'].items():
-                        f.write(f"📊 {site['name']}\n")
-                        f.write(f"🌐 {site['url']}\n")
-                        f.write(f"📅 Última verificación: {site['last_check']}\n")
-                        f.write(f"✅ Estado: {site['status']}\n")
-                        f.write(f"📏 Tamaño datos: {site['data_size']} bytes\n")
-                        f.write(f"🔢 Total verificaciones: {site['total_checks']}\n")
-                        f.write("-" * 60 + "\n\n")
-                
-                print("✅ Análisis de cambios completado")
-                conn.close()
-                
-            except Exception as e:
-                print(f"❌ Error analizando cache: {e}")
-
-        if __name__ == "__main__":
-            analyze_cache_changes()
-        EOF
-
     - name: 🔍 Run URLWatch monitoring
       run: |
         echo "🚀 Iniciando monitoreo URLWatch..."
-        
-        # Ejecutar URLWatch con configuración personalizada
         urlwatch --config .urlwatch/config.yaml --urls .urlwatch/urls.yaml --cache .urlwatch/cache.db --verbose > logs/urlwatch_$(date +%Y%m%d_%H%M%S).txt 2>&1 || true
-        
         echo "✅ Monitoreo completado"
 
     - name: 📈 Analyze changes and generate detailed report
@@ -340,17 +167,14 @@ jobs:
           
           # Buscar información en el archivo de estado
           if [ -f "logs/sites_status.txt" ]; then
-            # Buscar línea con el GUID o URL
             site_info=$(grep -A 5 "$url_clean" logs/sites_status.txt 2>/dev/null || grep -A 5 "$name_clean" logs/sites_status.txt 2>/dev/null || echo "")
             
             if [ -n "$site_info" ]; then
-              # Extraer información relevante
               last_check=$(echo "$site_info" | grep "Última verificación:" | cut -d: -f2- | sed 's/^ *//')
               status=$(echo "$site_info" | grep "Estado:" | cut -d: -f2- | sed 's/^ *//')
               data_size=$(echo "$site_info" | grep "Tamaño datos:" | cut -d: -f2- | sed 's/^ *//')
               total_checks=$(echo "$site_info" | grep "Total verificaciones:" | cut -d: -f2- | sed 's/^ *//')
               
-              # Escribir en el summary
               echo "================================================================================" >> logs/summary.md
               echo "🔍 $name_clean" >> logs/summary.md
               echo "🌐 [$url_clean]($url_clean)" >> logs/summary.md
@@ -362,7 +186,6 @@ jobs:
               echo "------------------------------------------------------------" >> logs/summary.md
               echo "" >> logs/summary.md
             else
-              # Si no hay información, usar datos por defecto
               echo "================================================================================" >> logs/summary.md
               echo "🔍 $name_clean" >> logs/summary.md
               echo "🌐 [$url_clean]($url_clean)" >> logs/summary.md
@@ -386,7 +209,6 @@ jobs:
         
         EOF
         
-        # Volver a extraer información pero en formato markdown legible
         grep -A 1 "^name:" .urlwatch/urls.yaml | paste - - | while read name url; do
           name_clean=$(echo "$name" | sed 's/name: //; s/"//g')
           url_clean=$(echo "$url" | sed 's/url: //; s/"//g')
@@ -439,10 +261,8 @@ jobs:
         if git diff --staged --quiet; then
           echo "ℹ️ No hay cambios para commitear"
         else
-          # Crear mensaje de commit con información de la ejecución
           TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
           
-          # Verificar si hay errores en el último log
           if ls logs/urlwatch_*.txt | xargs grep -l "ERROR:" | tail -n1 > /dev/null 2>&1; then
             COMMIT_MSG="🔍 URLWatch monitoring update ⚠️  - ${TIMESTAMP}"
           else
@@ -463,7 +283,6 @@ jobs:
         echo "🔗 URLs monitoreadas: $(grep -c '^name:' .urlwatch/urls.yaml)"
         echo "📁 Archivos de log: $(ls logs/ | wc -l)"
         
-        # Mostrar estado si está disponible
         if [ -f "logs/sites_status.txt" ]; then
           echo ""
           echo "📋 Estado actual de sitios:"
