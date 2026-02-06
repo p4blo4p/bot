@@ -1,12 +1,12 @@
 # 📊 URLWatch Monitoring Summary
 
-**Generated:** 05/02/2026 19:38:28
+**Generated:** 06/02/2026 02:17:55
 **Status:** ✅ Monitoring completed successfully
 
 ## Recent Activity
 
 ### Latest Execution Log
-`urlwatch_20260205_193824.txt`
+`urlwatch_20260206_021753.txt`
 
 ## Monitored Sites
 
@@ -19,10 +19,10 @@
 ### 🔍 name:
 
 - **URL:** [Oposiciones UCA - Informática	tags:](Oposiciones UCA - Informática	tags:)
-- **Última verificación:** 05/02/2026 19:38:28
+- **Última verificación:** 06/02/2026 02:17:56
 - **Estado:** ✅ OK
-- **Último cambio:** 05/02/2026 19:38:28
-- **Última verificación sin cambios:** 05/02/2026 19:38:28
+- **Último cambio:** 06/02/2026 02:17:56
+- **Última verificación sin cambios:** 06/02/2026 02:17:56
 - **Total verificaciones:** 1
 
 ---
@@ -30,10 +30,10 @@
 ### 🔍 --
 
 - **URL:** [name: Cursos INAP - Informática](name: Cursos INAP - Informática)
-- **Última verificación:** 05/02/2026 19:38:28
+- **Última verificación:** 06/02/2026 02:17:56
 - **Estado:** ✅ OK
-- **Último cambio:** 05/02/2026 19:38:28
-- **Última verificación sin cambios:** 05/02/2026 19:38:28
+- **Último cambio:** 06/02/2026 02:17:56
+- **Última verificación sin cambios:** 06/02/2026 02:17:56
 - **Total verificaciones:** 1
 
 ---
@@ -41,10 +41,10 @@
 ### 🔍 tags:
 
 - **URL:** [--](--)
-- **Última verificación:** 05/02/2026 19:38:28
+- **Última verificación:** 06/02/2026 02:17:56
 - **Estado:** ✅ OK
-- **Último cambio:** 05/02/2026 19:38:28
-- **Última verificación sin cambios:** 05/02/2026 19:38:28
+- **Último cambio:** 06/02/2026 02:17:56
+- **Última verificación sin cambios:** 06/02/2026 02:17:56
 - **Total verificaciones:** 1
 
 ---
@@ -52,10 +52,10 @@
 ### 🔍 name:
 
 - **URL:** [Ayto Puerto Real - Tablón	tags:](Ayto Puerto Real - Tablón	tags:)
-- **Última verificación:** 05/02/2026 19:38:28
+- **Última verificación:** 06/02/2026 02:17:56
 - **Estado:** ✅ OK
-- **Último cambio:** 05/02/2026 19:38:28
-- **Última verificación sin cambios:** 05/02/2026 19:38:28
+- **Último cambio:** 06/02/2026 02:17:56
+- **Última verificación sin cambios:** 06/02/2026 02:17:56
 - **Total verificaciones:** 1
 
 ---
@@ -63,10 +63,10 @@
 ### 🔍 --
 
 - **URL:** [name: Ayto Puerto Real - OPE](name: Ayto Puerto Real - OPE)
-- **Última verificación:** 05/02/2026 19:38:28
+- **Última verificación:** 06/02/2026 02:17:56
 - **Estado:** ✅ OK
-- **Último cambio:** 05/02/2026 19:38:28
-- **Última verificación sin cambios:** 05/02/2026 19:38:28
+- **Último cambio:** 06/02/2026 02:17:56
+- **Última verificación sin cambios:** 06/02/2026 02:17:56
 - **Total verificaciones:** 1
 
 ---
@@ -74,10 +74,10 @@
 ### 🔍 tags:
 
 - **URL:** [--](--)
-- **Última verificación:** 05/02/2026 19:38:28
+- **Última verificación:** 06/02/2026 02:17:56
 - **Estado:** ✅ OK
-- **Último cambio:** 05/02/2026 19:38:28
-- **Última verificación sin cambios:** 05/02/2026 19:38:28
+- **Último cambio:** 06/02/2026 02:17:56
+- **Última verificación sin cambios:** 06/02/2026 02:17:56
 - **Total verificaciones:** 1
 
 ---
@@ -85,10 +85,10 @@
 ### 🔍 name:
 
 - **URL:** [BOE - Oposiciones Estado	tags:](BOE - Oposiciones Estado	tags:)
-- **Última verificación:** 05/02/2026 19:38:28
+- **Última verificación:** 06/02/2026 02:17:56
 - **Estado:** ✅ OK
-- **Último cambio:** 05/02/2026 19:38:28
-- **Última verificación sin cambios:** 05/02/2026 19:38:28
+- **Último cambio:** 06/02/2026 02:17:56
+- **Última verificación sin cambios:** 06/02/2026 02:17:56
 - **Total verificaciones:** 1
 
 ---
@@ -96,10 +96,10 @@
 ### 🔍 --
 
 - **URL:** [name: Junta de Andalucía - OPE](name: Junta de Andalucía - OPE)
-- **Última verificación:** 05/02/2026 19:38:28
+- **Última verificación:** 06/02/2026 02:17:56
 - **Estado:** ✅ OK
-- **Último cambio:** 05/02/2026 19:38:28
-- **Última verificación sin cambios:** 05/02/2026 19:38:28
+- **Último cambio:** 06/02/2026 02:17:56
+- **Última verificación sin cambios:** 06/02/2026 02:17:56
 - **Total verificaciones:** 1
 
 ---
@@ -107,10 +107,10 @@
 ### 🔍 tags:
 
 - **URL:** []()
-- **Última verificación:** 05/02/2026 19:38:28
+- **Última verificación:** 06/02/2026 02:17:56
 - **Estado:** ✅ OK
-- **Último cambio:** 05/02/2026 19:38:28
-- **Última verificación sin cambios:** 05/02/2026 19:38:28
+- **Último cambio:** 06/02/2026 02:17:56
+- **Última verificación sin cambios:** 06/02/2026 02:17:56
 - **Total verificaciones:** 1
 
 ---
