@@ -1,48 +1,40 @@
 # URLWatch Configuration - Seguimiento detallado de cambios
-# ~/.config/urlwatch/urlwatch.yaml
+# urls2watch.yaml
 
 display:
-  # Mostrar información más detallada
   new: true
   error: true
   unchanged: false
   empty-diff: true
 
 report:
-  # Formato del reporte
   text:
-    line_length: 79
+    line_length: 120
     details: true
     footer: true
     minimal: false
-  
-  # Incluir información adicional en los reportes
   html:
     diff: unified
 
-# Configuración de almacenamiento y cache
 storage:
-  # Mantener más historia en la base de datos
   minidb:
-    max_snapshots: 10  # Guardar hasta 10 snapshots por URL
+    filename: .urlwatch/cache.db
+    max_snapshots: 10
 
-# Configuración de trabajos (jobs)
 jobs:
   - name: "Oposiciones UCA - Informática"
     url: "https://personal.uca.es/oposiciones-turno-libre/"
     timeout: 30
-    ignore_connection_errors: false
     filter:
       - html2text
       - grep: "informática"
       - strip
-    # Añadir etiquetas para mejor organización
     tags:
       - oposiciones
       - universidad
       - informatica
 
-  - name: "Cursos INAP - Informática"  
+  - name: "Cursos INAP - Informática"
     url: "https://buscadorcursos.inap.es/#/?abierto=true&funcion=6"
     timeout: 30
     filter:
@@ -55,7 +47,7 @@ jobs:
       - informatica
 
   - name: "Ayto Puerto Real - Tablón"
-    url: "https://puertoreal.sedelectronica.es/board" 
+    url: "https://puertoreal.sedelectronica.es/board"
     timeout: 30
     filter:
       - html2text
@@ -70,7 +62,7 @@ jobs:
     url: "https://puertoreal.es/oferta-publica-de-empleo/"
     timeout: 30
     filter:
-      - html2text  
+      - html2text
       - grep: "(?i)informática|técnico|sistemas"
       - strip
     tags:
@@ -78,7 +70,6 @@ jobs:
       - puerto-real
       - ope
 
-  # URLs corregidas (las originales daban 404)
   - name: "BOE - Oposiciones Estado"
     url: "https://www.boe.es/buscar/doc.php?coleccion=boe&modo=ultimosdias&tm=4"
     timeout: 30
@@ -97,32 +88,13 @@ jobs:
     filter:
       - html2text
       - grep: "(?i)informática|sistemas|tecnolog|oposición"
-      - strip  
+      - strip
     tags:
       - junta-andalucia
       - ope
       - informatica
 
-# Configuración de reportes
 reporters:
-  - stdout:
-      color: true
-      
-  # Guardar reportes detallados en archivos
   - text:
-      filename: "logs/detailed_report_{timestamp}.txt"
+      filename: "logs/detailed_report.txt"
       details: true
-      
-  # Opcional: envío por email (descomenta y configura si lo necesitas)
-  # - email:
-  #     enabled: true
-  #     from: "tu-email@gmail.com"
-  #     to: "destino@gmail.com"
-  #     subject: "URLWatch: Cambios detectados"
-  #     smtp:
-  #       host: "smtp.gmail.com"
-  #       port: 587
-  #       starttls: true
-  #       auth: true
-  #       user: "tu-email@gmail.com"
-  #       password: "tu-password"
