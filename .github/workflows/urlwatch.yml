@@ -53,7 +53,7 @@ jobs:
     - name: 🔍 Run URLWatch monitoring
       run: |
         echo "🚀 Iniciando monitoreo URLWatch..."
-        urlwatch --config .urlwatch/config.yaml --urls .urlwatch/urls.yaml --cache .urlwatch/cache.db --verbose > logs/last_run.log 2>&1 || true
+        urlwatch --config .urlwatch/config.yaml --urls .urlwatch/urls.yaml --cache .urlwatch/cache.db --verbose > logs/last_run.log 2>&1 
         echo "✅ Monitoreo completado"
 
     - name: 📈 Analyze changes and generate detailed report
@@ -80,7 +80,7 @@ jobs:
     - name: 🗂️ Clean old log files
       run: |
         cd logs || exit 0
-        ls -t *.txt *.log 2>/dev/null | tail -n +11 | xargs -r rm -- || true
+        ls -t *.txt *.log 2>/dev/null | tail -n +11 | xargs -r rm -- 
 
     - name: 📤 Commit and push changes
       run: |
@@ -88,13 +88,13 @@ jobs:
         git config --local user.name "GitHub Action"
 
         # -f para forzar en caso de que logs/ este en .gitignore
-        git add -f logs/summary.md cache.db || true
+        git add -f logs/summary.md cache.db 
 
         if git diff --staged --quiet; then
           echo "ℹ️ No hay cambios para commitear"
         else
           TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
-          git commit -m "🔍 Monitoreo URLWatch - ${TIMESTAMP}" || true
-          git push || true
+          git commit -m "🔍 Monitoreo URLWatch - ${TIMESTAMP}" 
+          git push 
           echo "✅ Cambios subidos correctamente al repositorio"
         fi
