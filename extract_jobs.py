@@ -1,32 +1,42 @@
-#!/usr/bin/env python3
-"""
-Script para extraer jobs de urls2watch.yaml
-"""
 import yaml
-import sys
+import os
 
 def extract_jobs():
-    try:
-        with open('urls2watch.yaml', 'r') as f:
-            data = yaml.safe_load(f)
-        
-        # Extraer solo los jobs si existen
-        jobs = data.get('jobs', [])
-        
-        if jobs:
-            with open('.urlwatch/urls.yaml', 'w') as f:
-                for i, job in enumerate(jobs):
-                    # Escribir cada job como documento YAML separado
-                    yaml.dump(job, f, default_flow_style=False, allow_unicode=True)
-                    if i < len(jobs) - 1:
-                        f.write('---\n')
-            print(f"✅ Extraídos {len(jobs)} jobs al archivo .urlwatch/urls.yaml")
-        else:
-            print("⚠️ No se encontraron jobs en urls2watch.yaml")
-            
-    except Exception as e:
-        print(f"❌ Error extrayendo jobs: {e}")
-        sys.exit(1)
+    """
+    Lee urls2watch.yaml y genera los archivos .urlwatch/urls.yaml y .urlwatch/config.yaml
+    compatibles con la ejecucion de urlwatch.
+    """
+    os.makedirs('.urlwatch', exist_ok=True)
+    
+    if not os.path.exists('urls2watch.yaml'):
+        print("⚠️ No se encontró urls2watch.yaml")
+        return
 
-if __name__ == "__main__":
+    with open('urls2watch.yaml', 'r', encoding='utf-8') as f:
+        data = yaml.safe_load(f)
+
+    if not isinstance(data, dict):
+        print("⚠️ Formato inválido en urls2watch.yaml")
+        return
+
+    jobs = data.get('jobs', [])
+
+    # Guardar urls.yaml para urlwatch
+    with open('.urlwatch/urls.yaml', 'w', encoding='utf-8') as f:
+        yaml.dump_all(jobs, f, default_flow_style=False, allow_unicode=True)
+
+    # Guardar config.yaml para urlwatch
+    config = {
+        'display': data.get('display', {'new': True, 'error': True}),
+        'report': data.get('report', {'text': {'line_length': 120, 'details': True}}),
+        'storage': data.get('storage', {'minidb': {'filename': '.urlwatch/cache.db'}}),
+        'reporters': [{'text': {'filename': 'logs/detailed_report.txt', 'details': True}}]
+    }
+
+    with open('.urlwatch/config.yaml', 'w', encoding='utf-8') as f:
+        yaml.dump(config, f, default_flow_style=False)
+
+    print(f"✅ Extraídos {len(jobs)} trabajos a .urlwatch/urls.yaml")
+
+if __name__ == '__main__':
     extract_jobs()
