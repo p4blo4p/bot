@@ -7,6 +7,7 @@ def extract_jobs():
     compatibles con la ejecucion de urlwatch.
     """
     os.makedirs('.urlwatch', exist_ok=True)
+    os.makedirs('logs', exist_ok=True)
     
     if not os.path.exists('urls2watch.yaml'):
         print("⚠️ No se encontró urls2watch.yaml")
@@ -16,7 +17,7 @@ def extract_jobs():
         data = yaml.safe_load(f)
 
     if not isinstance(data, dict):
-        print("⚠️ Formato inválido en urls2watch.yaml")
+        print("⚠️ Formato invalido en urls2watch.yaml")
         return
 
     jobs = data.get('jobs', [])
@@ -36,7 +37,7 @@ def extract_jobs():
     with open('.urlwatch/config.yaml', 'w', encoding='utf-8') as f:
         yaml.dump(config, f, default_flow_style=False)
 
-    print(f"✅ Extraídos {len(jobs)} trabajos a .urlwatch/urls.yaml")
+    print(f"✅ Extraidos {len(jobs)} trabajos a .urlwatch/urls.yaml")
 
 if __name__ == '__main__':
     extract_jobs()
