@@ -5,23 +5,23 @@ on:
     # Ejecutar cada 6 horas
     - cron: '0 */6 * * *'
   workflow_dispatch: # Permitir ejecución manual
-  
+
 env:
   TZ: Europe/Madrid
 
 jobs:
   monitor:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: 📥 Checkout repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0 # Necesario para el historial
+        fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: 🐍 Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
@@ -31,260 +31,65 @@ jobs:
 
     - name: 📁 Create directories
       run: |
-        mkdir -p logs
-        mkdir -p .urlwatch
+        mkdir -p logs .urlwatch
 
-    - name: 🔧 Setup URLWatch configuration
+    - name: 🔄 Extract jobs from urls2watch.yaml
       run: |
-        # Crear configuración detallada
-        cat > .urlwatch/config.yaml << 'EOF'
-        display:
-          new: true
-          error: true
-          unchanged: false
-          empty-diff: true
-        
-        report:
-          text:
-            line_length: 120
-            details: true
-            footer: true
-            minimal: false
-        
-        storage:
-          minidb:
-            filename: .urlwatch/cache.db
-            
-        reporters:
-          - text:
-              filename: logs/detailed_report.txt
-              details: true
-        EOF
-
-    - name: 📝 Create default URLs configuration 
-      run: |
-        # Crear archivo de URLs con solo las definiciones de jobs
-        cat > .urlwatch/urls.yaml << 'EOF'
-        name: "Oposiciones UCA - Informática"
-        url: "https://personal.uca.es/oposiciones-turno-libre/"
-        timeout: 30
-        filter:
-          - html2text
-          - grep: "informática"
-          - strip
-        ---
-        name: "Cursos INAP - Informática"  
-        url: "https://buscadorcursos.inap.es/#/?abierto=true&funcion=6"
-        timeout: 30
-        filter:
-          - html2text
-          - grep: "(?i)informática|sistemas|tecnolog"
-          - strip
-        ---
-        name: "Ayto Puerto Real - Tablón"
-        url: "https://puertoreal.sedelectronica.es/board" 
-        timeout: 30
-        filter:
-          - html2text
-          - grep: "(?i)informática|técnico|sistemas"
-          - strip
-        ---
-        name: "Ayto Puerto Real - OPE"
-        url: "https://puertoreal.es/oferta-publica-de-empleo/"
-        timeout: 30
-        filter:
-          - html2text  
-          - grep: "(?i)informática|técnico|sistemas"
-          - strip
-        ---
-        name: "BOE - Búsqueda Oposiciones"
-        url: "https://www.boe.es/buscar/doc.php?coleccion=boe&modo=ultimosdias&tm=4"
-        timeout: 30
-        filter:
-          - html2text
-          - grep: "(?i)informática|sistemas|tecnolog|técnico superior|oposición"
-          - strip
-        ---
-        name: "Junta de Andalucía - Función Pública"
-        url: "https://www.juntadeandalucia.es/organismos/funcionpublica/"
-        timeout: 30
-        filter:
-          - html2text
-          - grep: "(?i)informática|sistemas|tecnolog|oposición"
-          - strip
-        EOF
-
-    - name: 🔄 Extract jobs from custom URLs file
-      run: |
-        # Si existe un archivo urls2watch.yaml personalizado, extraer solo los jobs
-        if [ -f "urls2watch.yaml" ]; then
-          echo "🔄 Detectado urls2watch.yaml personalizado, extrayendo jobs..."
-          python extract_jobs.py
-        fi
+        python extract_jobs.py
 
     - name: 🗂️ Load previous cache if exists
       run: |
-        # Si existe cache anterior en el repo, restaurarlo
         if [ -f "cache.db" ]; then
           cp cache.db .urlwatch/cache.db
           echo "✅ Cache anterior restaurado"
         else
-          echo "ℹ️ No hay cache anterior, iniciando desde cero"
+          echo "ℹ️ No hay cache anterior, iniciando sesión limpia"
         fi
 
     - name: 🔍 Run URLWatch monitoring
       run: |
         echo "🚀 Iniciando monitoreo URLWatch..."
-        urlwatch --config .urlwatch/config.yaml --urls .urlwatch/urls.yaml --cache .urlwatch/cache.db --verbose > logs/urlwatch_$(date +%Y%m%d_%H%M%S).txt 2>&1 || true
+        urlwatch --config .urlwatch/config.yaml --urls .urlwatch/urls.yaml --cache .urlwatch/cache.db --verbose > logs/last_run.log 2>&1 || true
         echo "✅ Monitoreo completado"
 
     - name: 📈 Analyze changes and generate detailed report
       run: |
         python track_changes.py
-        
-        # Crear resumen mejorado con nombres reales y URLs clickables
-        cat > logs/summary.md << EOF
-        # 📊 URLWatch Monitoring Summary
 
-        **Generated:** $(date '+%d/%m/%Y %H:%M:%S')
-        **Status:** ✅ Monitoring completed successfully
-
-        ## Recent Activity
-
-        ### Latest Execution Log
-        \`$(ls -t logs/urlwatch_*.txt | head -n1 | xargs basename)\`
-
-        ## Monitored Sites
-
-        ### Detailed Status
-        \`\`\`
-        EOF
-        
-        # Extraer URLs y nombres del archivo de configuración
-        grep -A 1 "^name:" .urlwatch/urls.yaml | paste - - | while read name url; do
-          name_clean=$(echo "$name" | sed 's/name: //; s/"//g')
-          url_clean=$(echo "$url" | sed 's/url: //; s/"//g')
-          
-          # Buscar información en el archivo de estado
-          if [ -f "logs/sites_status.txt" ]; then
-            site_info=$(grep -A 5 "$url_clean" logs/sites_status.txt 2>/dev/null || grep -A 5 "$name_clean" logs/sites_status.txt 2>/dev/null || echo "")
-            
-            if [ -n "$site_info" ]; then
-              last_check=$(echo "$site_info" | grep "Última verificación:" | cut -d: -f2- | sed 's/^ *//')
-              status=$(echo "$site_info" | grep "Estado:" | cut -d: -f2- | sed 's/^ *//')
-              data_size=$(echo "$site_info" | grep "Tamaño datos:" | cut -d: -f2- | sed 's/^ *//')
-              total_checks=$(echo "$site_info" | grep "Total verificaciones:" | cut -d: -f2- | sed 's/^ *//')
-              
-              echo "================================================================================" >> logs/summary.md
-              echo "🔍 $name_clean" >> logs/summary.md
-              echo "🌐 [$url_clean]($url_clean)" >> logs/summary.md
-              echo "📅 Última verificación: $(date '+%d/%m/%Y %H:%M:%S')" >> logs/summary.md
-              echo "✅ Estado: $status" >> logs/summary.md
-              echo "📏 Tamaño datos: $data_size" >> logs/summary.md
-              echo "🔄 Última verificación sin cambios: $last_check" >> logs/summary.md
-              echo "📊 Total verificaciones: $total_checks" >> logs/summary.md
-              echo "------------------------------------------------------------" >> logs/summary.md
-              echo "" >> logs/summary.md
-            else
-              echo "================================================================================" >> logs/summary.md
-              echo "🔍 $name_clean" >> logs/summary.md
-              echo "🌐 [$url_clean]($url_clean)" >> logs/summary.md
-              echo "📅 Última verificación: $(date '+%d/%m/%Y %H:%M:%S')" >> logs/summary.md
-              echo "✅ Estado: ✅ OK" >> logs/summary.md
-              echo "📏 Tamaño datos: 0 bytes" >> logs/summary.md
-              echo "🔄 Última verificación sin cambios: $(date '+%d/%m/%Y %H:%M:%S')" >> logs/summary.md
-              echo "📊 Total verificaciones: 1" >> logs/summary.md
-              echo "------------------------------------------------------------" >> logs/summary.md
-              echo "" >> logs/summary.md
-            fi
-          fi
-        done
-        
-        echo "\`\`\`" >> logs/summary.md
-        
-        # Crear versión legible adicional
-        cat >> logs/summary.md << EOF
-        
-        ## 📋 Detailed Status (Readable Format)
-        
-        EOF
-        
-        grep -A 1 "^name:" .urlwatch/urls.yaml | paste - - | while read name url; do
-          name_clean=$(echo "$name" | sed 's/name: //; s/"//g')
-          url_clean=$(echo "$url" | sed 's/url: //; s/"//g')
-          
-          echo "### 🔍 $name_clean" >> logs/summary.md
-          echo "" >> logs/summary.md
-          echo "- **URL:** [$url_clean]($url_clean)" >> logs/summary.md
-          echo "- **Última verificación:** $(date '+%d/%m/%Y %H:%M:%S')" >> logs/summary.md
-          echo "- **Estado:** ✅ OK" >> logs/summary.md
-          echo "- **Último cambio:** $(date '+%d/%m/%Y %H:%M:%S')" >> logs/summary.md
-          echo "- **Última verificación sin cambios:** $(date '+%d/%m/%Y %H:%M:%S')" >> logs/summary.md
-          echo "- **Total verificaciones:** 1" >> logs/summary.md
-          echo "" >> logs/summary.md
-          echo "---" >> logs/summary.md
-          echo "" >> logs/summary.md
-        done
-
-    - name: 📦 Upload reports as artifacts (v4)
+    - name: 📦 Upload reports as artifacts
       uses: actions/upload-artifact@v4
       with:
         name: urlwatch-reports-${{ github.run_number }}
         path: |
           logs/*.md
           logs/*.txt
-          logs/*.json
+          logs/*.log
         retention-days: 30
 
     - name: 💾 Backup cache for next run
       run: |
-        # Copiar cache al repo para persistirlo
         if [ -f ".urlwatch/cache.db" ]; then
           cp .urlwatch/cache.db cache.db
           echo "✅ Cache guardado para próxima ejecución"
         fi
 
-    - name: 🗂️ Organize log files
+    - name: 🗂️ Clean old log files
       run: |
-        # Mantener solo los últimos 10 archivos de log
-        cd logs
-        ls -t urlwatch_*.txt | tail -n +11 | xargs -r rm --
-        echo "🧹 Archivos antiguos limpiados"
+        cd logs || exit 0
+        ls -t *.txt *.log 2>/dev/null | tail -n +11 | xargs -r rm -- || true
 
     - name: 📤 Commit and push changes
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        
+
         git add logs/ cache.db || true
-        
+
         if git diff --staged --quiet; then
           echo "ℹ️ No hay cambios para commitear"
         else
           TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
-          
-          if ls logs/urlwatch_*.txt | xargs grep -l "ERROR:" | tail -n1 > /dev/null 2>&1; then
-            COMMIT_MSG="🔍 URLWatch monitoring update ⚠️  - ${TIMESTAMP}"
-          else
-            COMMIT_MSG="🔍 URLWatch monitoring update ✅ - ${TIMESTAMP}"
-          fi
-          
-          git commit -m "$COMMIT_MSG" || true
+          git commit -m "🔍 Monitoreo URLWatch - ${TIMESTAMP}" || true
           git push || true
           echo "✅ Cambios enviados al repositorio"
-        fi
-
-    - name: 📊 Display summary
-      run: |
-        echo "=================================="
-        echo "🎯 RESUMEN DE EJECUCIÓN"
-        echo "=================================="
-        echo "📅 Fecha: $(date '+%d/%m/%Y %H:%M:%S')"
-        echo "🔗 URLs monitoreadas: $(grep -c '^name:' .urlwatch/urls.yaml)"
-        echo "📁 Archivos de log: $(ls logs/ | wc -l)"
-        
-        if [ -f "logs/sites_status.txt" ]; then
-          echo ""
-          echo "📋 Estado actual de sitios:"
-          grep -E "^📊|^✅" logs/sites_status.txt | head -12 || true
         fi
