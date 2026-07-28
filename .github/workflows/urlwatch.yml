@@ -6,6 +6,10 @@ on:
     - cron: '0 */6 * * *'
   workflow_dispatch: # Permitir ejecución manual
 
+# Permisos explícitos para que el bot pueda hacer git push
+permissions:
+  contents: write
+
 env:
   TZ: Europe/Madrid
 
@@ -83,7 +87,8 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
 
-        git add logs/ cache.db || true
+        # -f para forzar en caso de que logs/ este en .gitignore
+        git add -f logs/summary.md cache.db || true
 
         if git diff --staged --quiet; then
           echo "ℹ️ No hay cambios para commitear"
@@ -91,5 +96,5 @@ jobs:
           TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
           git commit -m "🔍 Monitoreo URLWatch - ${TIMESTAMP}" || true
           git push || true
-          echo "✅ Cambios enviados al repositorio"
+          echo "✅ Cambios subidos correctamente al repositorio"
         fi
